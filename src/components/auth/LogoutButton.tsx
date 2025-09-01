@@ -10,7 +10,7 @@ export default function LogoutButton({ className }: { className?: string }) {
       type="button"
       onClick={logout}
       disabled={busy}
-      className={className ?? 'border px-3 py-2 rounded'}
+      
     >
       {busy ? 'Saliendo...' : 'Cerrar sesión'}
     </button>
