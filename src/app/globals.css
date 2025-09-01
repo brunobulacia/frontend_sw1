@@ -1,32 +1,40 @@
 @import "tailwindcss";
 
-/* ==== Tokens base ======================================================= */
+/* ================== PALETA / TOKENS (look púrpura) ==================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base general */
+  --background: #4c1d95;         /* violeta 900 (degradé de fondo) */
+  --foreground: #f5f3ff;         /* lavanda muy claro */
 
-  /* superficies y estados */
-  --muted: #f5f7fa;
-  --muted-foreground: #6b7280;
-  --card: #ffffff;
+  /* Superficies y estados */
+  --muted: #3b1676;
+  --muted-foreground: #c4b5fd;
+  --card: #ffffff;               /* franja blanca central */
   --card-foreground: #111827;
-  --border: #e5e7eb;
-  --input: #f9fafb;
+  --border: #2e1065;
+  --input: #2a105d;
 
-  /* acentos */
-  --primary: #6366f1; /* indigo-500/600 vibe */
+  /* Acentos */
+  --primary: #a855f7;            /* violeta 500 */
   --primary-foreground: #ffffff;
-  --accent: #22c55e;  /* emerald-500 */
-  --accent-foreground: #052e16;
+  --accent: #f472b6;             /* fucsia 400 para detalles */
+  --accent-foreground: #2b102e;
 
-  /* focus ring / radios / sombras */
-  --ring: #6366f1;
-  --radius: 14px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
-  --shadow-md: 0 10px 20px rgba(0,0,0,.08), 0 3px 6px rgba(0,0,0,.06);
+  /* Focus / radios / sombras */
+  --ring: #c4b5fd;
+  --radius: 16px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.18);
+  --shadow-md: 0 10px 30px rgba(0,0,0,.25);
+
+  /* Degradés del tema */
+  --gradient-hero: linear-gradient(180deg, #7c3aed 0%, #6d28d9 45%, #8b5cf6 100%);
+  /* colores de ondas */
+  --wave-1: #7c3aed;  /* capa superior */
+  --wave-2: #9333ea;  /* media */
+  --wave-3: #a855f7;  /* inferior */
 }
 
-/* Mapear a tokens de Tailwind v4 */
+/* Mapear a tokens Tailwind v4 */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -53,32 +61,29 @@
   --radius: var(--radius);
 }
 
-/* ==== Tema oscuro ======================================================= */
+/* ================== TEMA OSCURO (mantiene vibe púrpura) =============== */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #3b1676;
+    --foreground: #efe9ff;
 
-    --muted: #121416;
-    --muted-foreground: #9ca3af;
-    --card: #0f1011;
-    --card-foreground: #f3f4f6;
-    --border: #262626;
-    --input: #151618;
+    --muted: #2b1159;
+    --muted-foreground: #d6ccff;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --border: #24104b;
+    --input: #221049;
 
-    --primary: #818cf8; /* un toque más claro en dark */
-    --primary-foreground: #ffffff;
-    --accent: #34d399;
-    --accent-foreground: #052e16;
+    --primary: #b48cff;
+    --primary-foreground: #0b0615;
+    --accent: #fb8abf;
+    --accent-foreground: #2b102e;
 
-    --ring: #818cf8;
+    --ring: #cbb7ff;
   }
 }
 
-/* Alternativa: habilita modo oscuro por clase .dark si lo necesitas */
-/* .dark { ... mismos tokens que arriba ... } */
-
-/* ==== Resets/estructura ================================================= */
+/* ================== RESET / BASE ====================================== */
 *,
 *::before,
 *::after { box-sizing: border-box; }
@@ -86,93 +91,73 @@
 html, body { height: 100%; }
 
 body {
-  background: var(--background);
+  /* fondo en degradé morado, como el header de la imagen */
+  background: var(--gradient-hero);
   color: var(--foreground);
-  font-family: var(--font-geist-sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji");
+  font-family: var(--font-geist-sans, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans");
   line-height: 1.5;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* transiciones suaves al cambiar tema */
   transition: background-color .2s ease, color .2s ease;
 }
 
-/* Suaviza transiciones generales (sin afectar animaciones grandes) */
 *:where(:not(.no-transition)) {
   transition: background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 
 img, video, canvas, svg { display: block; max-width: 100%; }
 
-/* ==== Tipografía ======================================================== */
-h1, h2, h3, h4 {
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-h1 { font-size: clamp(1.875rem, 2.5vw, 2.375rem); }
-h2 { font-size: clamp(1.5rem, 2vw, 1.875rem); }
-h3 { font-size: clamp(1.25rem, 1.5vw, 1.5rem); }
-
-p { color: color-mix(in srgb, var(--foreground) 92%, transparent); }
+/* ================== TIPOGRAFÍA ======================================== */
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; }
+h1 { font-size: clamp(2rem, 3vw, 2.75rem); }
+h2 { font-size: clamp(1.5rem, 2.2vw, 2rem); }
+h3 { font-size: clamp(1.25rem, 1.6vw, 1.5rem); }
+p  { color: color-mix(in srgb, var(--foreground) 92%, transparent); }
 small { color: var(--color-muted-foreground); }
 
 /* Selección */
 ::selection {
-  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 35%, transparent);
   color: var(--primary-foreground);
 }
 
-/* ==== Links ============================================================= */
-a {
-  color: var(--primary);
-  text-underline-offset: 3px;
-}
+/* ================== LINKS ============================================= */
+a { color: #fff; text-underline-offset: 3px; }
 a:hover { text-decoration: underline; }
 
-/* ==== Inputs y forms ==================================================== */
+/* ================== FORM / INPUTS ===================================== */
 input, textarea, select {
-  background: var(--input);
-  color: inherit;
-  border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 6px);
+  background: color-mix(in srgb, var(--input) 70%, transparent);
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: calc(var(--radius) - 8px);
   padding: .6rem .8rem;
   outline: none;
 }
-input::placeholder, textarea::placeholder { color: var(--color-muted-foreground); }
+input::placeholder, textarea::placeholder { color: #d6ccffcc; }
 
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  border-color: var(--primary);
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  border-color: var(--ring);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+    0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent);
 }
 
-/* ==== Botones (defaults bonitos sin utility classes) ==================== */
+/* ================== BOTONES =========================================== */
 button, .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  background: var(--primary); color: var(--primary-foreground);
   border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
-  border-radius: calc(var(--radius) - 6px);
-  padding: .6rem .9rem;
-  font-weight: 600;
-  cursor: pointer;
+  border-radius: 999px; /* aspecto pill */
+  padding: .65rem 1.05rem; font-weight: 700; letter-spacing: .2px;
   box-shadow: var(--shadow-sm);
 }
-button:hover, .btn:hover { filter: brightness(1.05); }
-button:active, .btn:active { transform: translateY(0.5px); }
+button:hover, .btn:hover { filter: brightness(1.06);  cursor: pointer;}
+button:active, .btn:active { transform: translateY(.5px); }
 button:disabled, .btn:disabled { opacity: .6; cursor: not-allowed; }
 
-/* variantes */
 .btn-ghost {
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
+  background: transparent; color: #fff;
+  border: 1px solid color-mix(in srgb, #ffffff 18%, transparent);
 }
 .btn-accent {
   background: var(--accent);
@@ -180,49 +165,68 @@ button:disabled, .btn:disabled { opacity: .6; cursor: not-allowed; }
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
-/* ==== Tarjetas / contenedores ========================================== */
+/* ================== TARJETAS / FRANJA BLANCA ========================== */
 .card {
   background: var(--card);
   color: var(--card-foreground);
-  border: 1px solid var(--border);
+  border: 1px solid #f1f5f9;
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
 }
 
-/* ==== Código ============================================================ */
+/* Franja blanca curvada tipo landing */
+.band {
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: 999px;
+  padding: 3rem 1.25rem;
+  box-shadow: var(--shadow-md);
+}
+
+/* Alternativa más curva usando clip-path (soportado en navegadores modernos) */
+.band-curved {
+  background: var(--card);
+  color: var(--card-foreground);
+  padding: 3rem 1.25rem;
+  box-shadow: var(--shadow-md);
+  /* forma orgánica tipo “ola” */
+  clip-path: path("M0,80 C120,40 220,120 360,90 C520,55 640,140 800,100 L800,400 L0,400 Z");
+}
+
+/* ================== CÓDIGO ============================================ */
 code, pre {
   font-family: var(--font-geist-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
 }
 pre {
-  background: var(--muted);
-  border: 1px solid var(--border);
-  color: inherit;
+  background: color-mix(in srgb, #ffffff 8%, var(--muted));
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: #efe9ff;
   padding: 1rem;
-  border-radius: calc(var(--radius) - 6px);
+  border-radius: calc(var(--radius) - 8px);
   overflow: auto;
 }
 
-/* ==== Scrollbar ========================================================= */
+/* ================== SCROLLBAR ========================================= */
 @supports selector(::-webkit-scrollbar) {
   *::-webkit-scrollbar { width: 10px; height: 10px; }
   *::-webkit-scrollbar-thumb {
-    background: var(--border);
+    background: color-mix(in srgb, #ffffff 15%, #4c1d95);
     border-radius: 999px;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--border) 70%, #000);
+    background: color-mix(in srgb, #ffffff 25%, #4c1d95);
   }
   *::-webkit-scrollbar-track { background: transparent; }
 }
 
-/* ==== Contenedor base =================================================== */
+/* ================== CONTENEDOR ======================================== */
 .container {
   max-width: 80rem;
   margin-inline: auto;
   padding-inline: 1rem;
 }
 
-/* ==== Accesibilidad / motion =========================================== */
+/* ================== ACCESIBILIDAD ===================================== */
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
