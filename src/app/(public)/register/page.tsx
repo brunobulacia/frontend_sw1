@@ -29,9 +29,39 @@ export default function RegisterPage() {
     setTimezone(detectTimezone());
   }, []);
 
+  // Validaciones en tiempo real
+  const validatePassword = (pwd: string) => {
+    return {
+      minLength: pwd.length >= 8,
+      hasUppercase: /[A-Z]/.test(pwd),
+      hasLowercase: /[a-z]/.test(pwd),
+      hasNumber: /[0-9]/.test(pwd),
+    };
+  };
+
+  const validateUsername = (user: string) => {
+    return /^[a-zA-Z0-9]+$/.test(user);
+  };
+
+  const passwordValidation = validatePassword(password);
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean);
+  const isUsernameValid = username.length === 0 || validateUsername(username);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validaciones del lado del cliente
+    if (!isUsernameValid) {
+      setError('El nombre de usuario solo puede contener letras y números (sin espacios ni caracteres especiales)');
+      return;
+    }
+
+    if (!isPasswordValid) {
+      setError('La contraseña no cumple con todos los requisitos');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
@@ -163,40 +193,80 @@ export default function RegisterPage() {
                 placeholder="camilag"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                className={`w-full rounded-xl border px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition focus:outline-none focus:ring-2 ${
+                  username && !isUsernameValid
+                    ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500 focus:ring-rose-500/40'
+                    : 'border-white/20 bg-white/10 hover:border-white/30 focus:border-amber-300 focus:ring-amber-300/40'
+                }`}
+                required
+              />
+              {username && !isUsernameValid && (
+                <p className="text-xs text-rose-300">
+                  Solo letras y números, sin espacios ni caracteres especiales
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-medium text-white/80">
+                Contraseña
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
                 required
               />
+              {password && (
+                <div className="space-y-1 rounded-lg bg-white/5 p-3 text-xs">
+                  <p className="font-medium text-white/70 mb-1">La contraseña debe contener:</p>
+                  <div className="space-y-1">
+                    <div className={`flex items-center gap-2 ${passwordValidation.minLength ? 'text-emerald-300' : 'text-white/50'}`}>
+                      <span>{passwordValidation.minLength ? '✓' : '○'}</span>
+                      <span>Mínimo 8 caracteres</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${passwordValidation.hasUppercase ? 'text-emerald-300' : 'text-white/50'}`}>
+                      <span>{passwordValidation.hasUppercase ? '✓' : '○'}</span>
+                      <span>Al menos una mayúscula</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${passwordValidation.hasLowercase ? 'text-emerald-300' : 'text-white/50'}`}>
+                      <span>{passwordValidation.hasLowercase ? '✓' : '○'}</span>
+                      <span>Al menos una minúscula</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${passwordValidation.hasNumber ? 'text-emerald-300' : 'text-white/50'}`}>
+                      <span>{passwordValidation.hasNumber ? '✓' : '○'}</span>
+                      <span>Al menos un número</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-medium text-white/80">
-                  Contraseña
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-white/80">
-                  Confirmar contraseña
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300/40"
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white/80">
+                Confirmar contraseña
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className={`w-full rounded-xl border px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition focus:outline-none focus:ring-2 ${
+                  confirmPassword && password !== confirmPassword
+                    ? 'border-rose-500/50 bg-rose-500/10 focus:border-rose-500 focus:ring-rose-500/40'
+                    : 'border-white/20 bg-white/10 hover:border-white/30 focus:border-amber-300 focus:ring-amber-300/40'
+                }`}
+                required
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-rose-300">
+                  Las contraseñas no coinciden
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

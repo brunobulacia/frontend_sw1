@@ -9,6 +9,7 @@ import LogoutButton from '@/components/auth/LogoutButton';
 const baseLinks = [
   { href: '/', label: 'Inicio' },
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/projects', label: 'Proyectos' },
 ];
 
 const getInitials = (email?: string | null) => {
