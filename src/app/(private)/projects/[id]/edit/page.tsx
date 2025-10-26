@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { use, useCallback, useEffect, useState, FormEvent } from 'react';
-import { api } from '@/lib/axios/client';
-import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { use, useCallback, useEffect, useState, FormEvent } from "react";
+import { api } from "@/lib/axios/client";
+import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Project = {
   id: string;
   code: string;
   name: string;
   description: string | null;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: "PUBLIC" | "PRIVATE";
   productObjective: string | null;
   definitionOfDone: string | null;
   sprintDuration: number;
-  qualityCriteria: number | null;
-  status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'ARCHIVED';
+  qualityCriteria: string | null;
+  status: "PLANNING" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED";
   startDate: string;
   endDate: string | null;
   owner: {
@@ -39,16 +39,16 @@ export default function EditProjectPage({
   const [success, setSuccess] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    visibility: 'PRIVATE' as 'PUBLIC' | 'PRIVATE',
-    productObjective: '',
-    definitionOfDone: '',
+    name: "",
+    description: "",
+    visibility: "PRIVATE" as "PUBLIC" | "PRIVATE",
+    productObjective: "",
+    definitionOfDone: "",
     sprintDuration: 2,
-    qualityCriteria: '',
-    status: 'PLANNING' as 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED',
-    startDate: '',
-    endDate: '',
+    qualityCriteria: "",
+    status: "PLANNING" as "PLANNING" | "ACTIVE" | "ON_HOLD" | "COMPLETED",
+    startDate: "",
+    endDate: "",
   });
 
   const fetchProject = useCallback(async () => {
@@ -65,28 +65,28 @@ export default function EditProjectPage({
         // Llenar el formulario
         setFormData({
           name: proj.name,
-          description: proj.description || '',
+          description: proj.description || "",
           visibility: proj.visibility,
-          productObjective: proj.productObjective || '',
-          definitionOfDone: proj.definitionOfDone || '',
+          productObjective: proj.productObjective || "",
+          definitionOfDone: proj.definitionOfDone || "",
           sprintDuration: proj.sprintDuration,
-          qualityCriteria: proj.qualityCriteria?.toString() || '',
+          qualityCriteria: proj.qualityCriteria || "",
           status: proj.status,
-          startDate: proj.startDate.split('T')[0],
-          endDate: proj.endDate ? proj.endDate.split('T')[0] : '',
+          startDate: proj.startDate.split("T")[0],
+          endDate: proj.endDate ? proj.endDate.split("T")[0] : "",
         });
       } else {
         setError(
           response.data?.error ??
             response.data?.message ??
-            'No se pudo obtener el proyecto.',
+            "No se pudo obtener el proyecto.",
         );
       }
     } catch (err: any) {
       setError(
         err?.data?.error ||
           err?.data?.message ||
-          'Error inesperado al cargar el proyecto.',
+          "Error inesperado al cargar el proyecto.",
       );
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ export default function EditProjectPage({
       if (formData.definitionOfDone)
         payload.definitionOfDone = formData.definitionOfDone;
       if (formData.qualityCriteria)
-        payload.qualityCriteria = parseInt(formData.qualityCriteria);
+        payload.qualityCriteria = formData.qualityCriteria;
       if (formData.endDate) payload.endDate = formData.endDate;
 
       const response = await api.patch(`/projects/${id}`, payload, {
@@ -128,7 +128,7 @@ export default function EditProjectPage({
       });
 
       if (response.status >= 200 && response.status < 300) {
-        setSuccess('¡Proyecto actualizado exitosamente!');
+        setSuccess("Proyecto actualizado exitosamente!");
         setTimeout(() => {
           router.push(`/projects/${id}`);
         }, 1500);
@@ -136,14 +136,14 @@ export default function EditProjectPage({
         setError(
           response.data?.message ||
             response.data?.error ||
-            'No se pudo actualizar el proyecto.',
+            "No se pudo actualizar el proyecto.",
         );
       }
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
           err?.message ||
-          'Error inesperado al actualizar el proyecto.',
+          "Error inesperado al actualizar el proyecto.",
       );
     } finally {
       setSaving(false);
@@ -168,7 +168,7 @@ export default function EditProjectPage({
           href="/projects"
           className="inline-block rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
         >
-          ← Volver a Proyectos
+          Volver a proyectos
         </Link>
       </main>
     );
@@ -196,7 +196,7 @@ export default function EditProjectPage({
           href={`/projects/${id}`}
           className="inline-block rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
         >
-          ← Volver al Proyecto
+          Volver al Proyecto
         </Link>
       </main>
     );
@@ -211,14 +211,14 @@ export default function EditProjectPage({
           </p>
           <h1 className="text-3xl font-semibold text-white">Editar Proyecto</h1>
           <p className="mt-2 text-sm text-white/70">
-            Actualiza la configuración del proyecto
+            Actualiza la configuracion del proyecto
           </p>
         </div>
         <Link
           href={`/projects/${id}`}
           className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
         >
-          ← Cancelar
+          Cancelar
         </Link>
       </div>
 
@@ -239,9 +239,11 @@ export default function EditProjectPage({
         className="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg backdrop-blur"
       >
         <div className="space-y-6">
-          {/* Información básica */}
+          {/* Informacion basica */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Información Básica</h2>
+            <h2 className="text-lg font-semibold text-white">
+              Informacion Basica
+            </h2>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-white/80">
@@ -251,14 +253,16 @@ export default function EditProjectPage({
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-primary focus:outline-none"
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-white/80">
-                Descripción
+                Descripcion
               </label>
               <textarea
                 value={formData.description}
@@ -280,13 +284,13 @@ export default function EditProjectPage({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      visibility: e.target.value as 'PUBLIC' | 'PRIVATE',
+                      visibility: e.target.value as "PUBLIC" | "PRIVATE",
                     })
                   }
                   className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
                 >
                   <option value="PRIVATE">Privado</option>
-                  <option value="PUBLIC">Público</option>
+                  <option value="PUBLIC">Publico</option>
                 </select>
               </div>
 
@@ -304,7 +308,7 @@ export default function EditProjectPage({
                   }
                   className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
                 >
-                  <option value="PLANNING">Planificación</option>
+                  <option value="PLANNING">Planificacion</option>
                   <option value="ACTIVE">Activo</option>
                   <option value="ON_HOLD">En Pausa</option>
                   <option value="COMPLETED">Completado</option>
@@ -313,9 +317,11 @@ export default function EditProjectPage({
             </div>
           </div>
 
-          {/* Configuración Scrum */}
+          {/* Configuracion Scrum */}
           <div className="space-y-4 border-t border-white/10 pt-6">
-            <h2 className="text-lg font-semibold text-white">Configuración Scrum</h2>
+            <h2 className="text-lg font-semibold text-white">
+              Configuracion Scrum
+            </h2>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-white/80">
@@ -348,7 +354,7 @@ export default function EditProjectPage({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-white/80">
-                  Duración de Sprint (semanas) *
+                  Duracion de Sprint (semanas) *
                 </label>
                 <input
                   type="number"
@@ -364,7 +370,9 @@ export default function EditProjectPage({
                   }
                   className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white focus:border-primary focus:outline-none"
                 />
-                <p className="mt-1 text-xs text-white/50">Entre 1 y 4 semanas</p>
+                <p className="mt-1 text-xs text-white/50">
+                  Entre 1 y 4 semanas
+                </p>
               </div>
 
               <div>
@@ -377,7 +385,10 @@ export default function EditProjectPage({
                   max="100"
                   value={formData.qualityCriteria}
                   onChange={(e) =>
-                    setFormData({ ...formData, qualityCriteria: e.target.value })
+                    setFormData({
+                      ...formData,
+                      qualityCriteria: e.target.value,
+                    })
                   }
                   className="w-full rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-primary focus:outline-none"
                 />
@@ -387,7 +398,9 @@ export default function EditProjectPage({
 
           {/* Fechas */}
           <div className="space-y-4 border-t border-white/10 pt-6">
-            <h2 className="text-lg font-semibold text-white">Planificación Temporal</h2>
+            <h2 className="text-lg font-semibold text-white">
+              Planificacion Temporal
+            </h2>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -434,7 +447,7 @@ export default function EditProjectPage({
               disabled={saving}
               className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50 shadow-lg shadow-emerald-500/30"
             >
-              {saving ? 'Guardando...' : 'Guardar Cambios'}
+              {saving ? "Guardando..." : "Guardar Cambios"}
             </button>
           </div>
         </div>
@@ -442,6 +455,3 @@ export default function EditProjectPage({
     </main>
   );
 }
-
-
-
