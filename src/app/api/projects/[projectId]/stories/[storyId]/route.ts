@@ -5,7 +5,7 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "app_token";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ projectId: string; storyId: string }> },
+  { params }: { params: { projectId: string; storyId: string } },
 ) {
   try {
     const { projectId, storyId } = await params;

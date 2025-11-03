@@ -1,3 +1,4 @@
+import { promises } from 'dns';
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
@@ -5,13 +6,13 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'app_token';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
 
-    const response = await fetch(`${BACKEND_URL}/api/projects/${id}`, {
+    const response = await fetch(`${BACKEND_URL}/api/projects/${projectId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -37,14 +38,14 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise< { projectId: string }>}
 ) {
   try {
-    const { id } = await params;
+    const { projectId } =  await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
     const body = await request.json();
 
-    const response = await fetch(`${BACKEND_URL}/api/projects/${id}`, {
+    const response = await fetch(`${BACKEND_URL}/api/projects/${projectId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -71,13 +72,13 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
 
-    const response = await fetch(`${BACKEND_URL}/api/projects/${id}`, {
+    const response = await fetch(`${BACKEND_URL}/api/projects/${projectId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

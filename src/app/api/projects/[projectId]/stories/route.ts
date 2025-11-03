@@ -5,7 +5,7 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "app_token";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: { projectId: string } },
 ) {
   try {
     const { projectId } = await params;
@@ -35,7 +35,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: { projectId: string } },
 ) {
   try {
     const { projectId } = await params;
