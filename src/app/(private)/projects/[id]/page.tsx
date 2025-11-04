@@ -594,21 +594,28 @@ export default function ProjectDetailPage({
           </span>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Link
-            href={`/projects/${project.id}/edit`}
-            className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
-            Editar proyecto
-          </Link>
-          <button
-            onClick={handleDelete}
-            disabled={deleteLoading}
-            className="inline-flex items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 px-6 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
-          >
-            {deleteLoading ? "Archivando..." : "Archivar"}
-          </button>
-        </div>
+       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+  <Link
+    href={`/projects/${project.id}/estimation`}
+    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-600 hover:to-teal-600"
+  >
+    <span></span>
+    Planning Poker
+  </Link>
+  <Link
+    href={`/projects/${project.id}/edit`}
+    className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+  >
+    Editar proyecto
+  </Link>
+  <button
+    onClick={handleDelete}
+    disabled={deleteLoading}
+    className="inline-flex items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 px-6 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+  >
+    {deleteLoading ? "Archivando..." : "Archivar"}
+  </button>
+</div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
