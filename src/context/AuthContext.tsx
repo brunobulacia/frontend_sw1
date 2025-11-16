@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (res.status >= 200 && res.status < 300) {
           await refresh();
           router.refresh();
-          const redirectParam = opts?.redirect ?? sp.get('redirect');
+          const redirectParam = opts?.redirect ?? (sp ? sp.get('redirect') : null);
           const destination =
             redirectParam && redirectParam !== '/' ? redirectParam : '/dashboard';
           router.replace(destination);
