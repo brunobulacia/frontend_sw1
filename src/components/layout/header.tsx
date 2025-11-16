@@ -44,30 +44,30 @@ export default function Header() {
       href={link.href}
       className={`relative text-sm font-medium transition-colors ${
         isActive(link.href)
-          ? 'text-primary'
-          : 'text-foreground/70 hover:text-foreground'
+          ? 'text-blue-400'
+          : 'text-slate-300 hover:text-white'
       }`}
       onClick={() => setOpen(false)}
     >
       {link.label}
       {isActive(link.href) && (
-        <span className="absolute -bottom-1 left-0 h-[2px] w-full rounded-full bg-primary" />
+        <span className="absolute -bottom-1 left-0 h-[2px] w-full rounded-full bg-blue-400" />
       )}
     </Link>
   );
 
   return (
-    <header className="sticky top-0 z-50 bg-gradient-to-r from-background via-background/95 to-background/80 backdrop-blur">
-      <nav className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-50 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-900/80 backdrop-blur border-b border-slate-700/50">
+      <nav className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 transition hover:bg-primary/15"
+            className="flex items-center gap-2 rounded-full bg-blue-500/20 hover:bg-blue-500/30 px-3 py-1.5 transition-colors duration-200"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-background font-semibold">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white font-semibold text-sm">
               {getInitials(user?.email)}
             </span>
-            <span className="font-semibold tracking-tight">SW1 Manager</span>
+            <span className="font-semibold tracking-tight text-white hidden sm:block">SW1 Manager</span>
           </Link>
         </div>
 
@@ -76,25 +76,25 @@ export default function Header() {
 
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <div className="hidden text-right sm:block">
-                <p className="text-xs uppercase text-foreground/50">Sesión</p>
-                <p className="text-sm font-medium text-foreground/80">
+              <div className="hidden text-right lg:block">
+                <p className="text-xs uppercase text-slate-500">Sesión</p>
+                <p className="text-sm font-medium text-slate-300">
                   {user?.email}
                 </p>
               </div>
-              <LogoutButton className="rounded-full border border-transparent bg-foreground/10 px-4 py-2 text-sm font-medium text-foreground transition hover:border-foreground/20 hover:bg-foreground/20" />
+              <LogoutButton className="rounded-full border border-slate-600/50 bg-slate-700/50 hover:bg-slate-600/50 px-4 py-2 text-sm font-medium text-slate-300 transition-colors" />
             </div>
           ) : (
             <div className="flex items-center gap-3">
               <Link
                 href="/login"
-                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-foreground transition hover:bg-foreground/10"
+                className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-700/50"
               >
                 Ingresar
               </Link>
               <Link
                 href="/register"
-                className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-background transition hover:bg-primary/90"
+                className="rounded-full bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-colors"
               >
                 Crear cuenta
               </Link>
@@ -104,7 +104,7 @@ export default function Header() {
 
         <button
           aria-label="Abrir menu"
-          className="inline-flex items-center gap-2 rounded-full border border-border/70 px-4 py-2 text-sm font-medium text-foreground transition hover:border-border hover:bg-foreground/10 md:hidden"
+          className="inline-flex items-center gap-2 rounded-full border border-slate-600/50 bg-slate-700/50 hover:bg-slate-600/50 px-4 py-2 text-sm font-medium text-slate-300 transition-colors md:hidden"
           onClick={() => setOpen((value) => !value)}
         >
           Menu
