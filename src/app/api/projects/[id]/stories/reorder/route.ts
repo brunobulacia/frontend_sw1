@@ -5,15 +5,15 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "app_token";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ projectId: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { projectId } = await params;
+    const { id } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
     const body = await request.json();
 
     const response = await fetch(
-      `${BACKEND_URL}/api/projects/${projectId}/stories/reorder`,
+      `${BACKEND_URL}/api/projects/${id}/stories/reorder`,
       {
         method: "PATCH",
         headers: {

@@ -31,6 +31,28 @@ type ProjectMember = {
   user: UserSummary;
 };
 
+type TaskStatus = "TODO" | "IN_PROGRESS" | "TESTING" | "DONE" | "BLOCKED";
+
+type Task = {
+  id: string;
+  code: string;
+  title: string;
+  description: string | null;
+  effort: number;
+  status: TaskStatus;
+  storyId: string;
+  assignedToId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: {
+    id: string;
+    email: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  };
+};
+
 type Story = {
   id: string;
   projectId: string;
@@ -115,6 +137,22 @@ const storyStatusOptions: { value: StoryStatus; label: string }[] = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
+const taskStatusOptions: { value: TaskStatus; label: string }[] = [
+  { value: "TODO", label: "To Do" },
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "TESTING", label: "Testing" },
+  { value: "DONE", label: "Done" },
+  { value: "BLOCKED", label: "Blocked" },
+];
+
+const taskStatusColors: Record<TaskStatus, string> = {
+  TODO: "bg-gray-500/20 text-gray-300 border-gray-500/30",
+  IN_PROGRESS: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  TESTING: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  DONE: "bg-green-500/20 text-green-300 border-green-500/30",
+  BLOCKED: "bg-red-500/20 text-red-300 border-red-500/30",
+};
+
 const emptyStoryForm = {
   title: "",
   asA: "",
@@ -184,6 +222,25 @@ export default function ProjectDetailPage({
   const [storySaving, setStorySaving] = useState(false);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
 
+  const [configs, setConfigs] = useState<any>(null);
+  const [configsLoading, setConfigsLoading] = useState(true);
+
+  // Task management state
+  const [tasks, setTasks] = useState<Record<string, Task[]>>({});
+  const [tasksLoading, setTasksLoading] = useState<Record<string, boolean>>({});
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    description: "",
+    effort: 1,
+  });
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const [taskSuccess, setTaskSuccess] = useState<string | null>(null);
+  const [taskSaving, setTaskSaving] = useState(false);
+  const [expandedStories, setExpandedStories] = useState<Set<string>>(new Set());
+
   const canManageTeam = useMemo(() => {
     if (!project || !user) return false;
     return project.owner.id === user.id && project.status !== "ARCHIVED";
@@ -232,12 +289,159 @@ export default function ProjectDetailPage({
     }
   }, [id]);
 
+  const fetchConfigs = useCallback(async () => {
+    setConfigsLoading(true);
+    try {
+      const response = await api.get(`/project-config/${id}/configs`);
+      setConfigs(response.data);
+    } catch (error: any) {
+      console.error("Error loading configs:", error);
+      setConfigs(null);
+    } finally {
+      setConfigsLoading(false);
+    }
+  }, [id]);
+
+
+  const fetchTasksForStory = useCallback(async (storyId: string) => {
+    setTasksLoading((prev) => ({ ...prev, [storyId]: true }));
+    try {
+      const response = await api.get(`/projects/${id}/stories/${storyId}/tasks`);
+      setTasks((prev) => ({ ...prev, [storyId]: response.data as Task[] }));
+    } catch (error: any) {
+      console.error("Error loading tasks:", error);
+      setTasks((prev) => ({ ...prev, [storyId]: [] }));
+    } finally {
+      setTasksLoading((prev) => ({ ...prev, [storyId]: false }));
+    }
+  }, [id]);
+
+  const handleOpenTaskModal = (storyId: string, task?: Task) => {
+    setCurrentStoryId(storyId);
+    setEditingTask(task || null);
+    if (task) {
+      setTaskForm({
+        title: task.title,
+        description: task.description || "",
+        effort: task.effort,
+      });
+    } else {
+      setTaskForm({
+        title: "",
+        description: "",
+        effort: 1,
+      });
+    }
+    setTaskError(null);
+    setTaskSuccess(null);
+    setShowTaskModal(true);
+  };
+
+  const handleCloseTaskModal = () => {
+    setShowTaskModal(false);
+    setCurrentStoryId(null);
+    setEditingTask(null);
+    setTaskForm({
+      title: "",
+      description: "",
+      effort: 1,
+    });
+    setTaskError(null);
+    setTaskSuccess(null);
+  };
+
+  const handleSubmitTask = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!currentStoryId) return;
+
+    setTaskError(null);
+    setTaskSuccess(null);
+
+    const payload = {
+      title: taskForm.title.trim(),
+      description: taskForm.description.trim() || undefined,
+      effort: taskForm.effort,
+    };
+
+    if (!payload.title) {
+      setTaskError("El título es requerido");
+      return;
+    }
+
+    setTaskSaving(true);
+    try {
+      if (editingTask) {
+        // Update task
+        await api.patch(
+          `/projects/${id}/stories/${currentStoryId}/tasks/${editingTask.id}`,
+          payload
+        );
+        setTaskSuccess("Tarea actualizada");
+      } else {
+        // Create task
+        await api.post(
+          `/projects/${id}/stories/${currentStoryId}/tasks`,
+          payload
+        );
+        setTaskSuccess("Tarea creada");
+      }
+
+      await fetchTasksForStory(currentStoryId);
+      setTimeout(() => {
+        handleCloseTaskModal();
+      }, 500);
+    } catch (error: any) {
+      setTaskError(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Error al guardar la tarea"
+      );
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
+  const handleDeleteTask = async (storyId: string, taskId: string) => {
+    if (!confirm("¿Estás seguro de eliminar esta tarea?")) return;
+
+    try {
+      await api.delete(`/projects/${id}/stories/${storyId}/tasks/${taskId}`);
+      await fetchTasksForStory(storyId);
+      setTaskSuccess("Tarea eliminada");
+      setTimeout(() => setTaskSuccess(null), 3000);
+    } catch (error: any) {
+      setTaskError(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Error al eliminar la tarea"
+      );
+      setTimeout(() => setTaskError(null), 3000);
+    }
+  };
+
+  const toggleStoryExpanded = (storyId: string) => {
+    setExpandedStories((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(storyId)) {
+        newSet.delete(storyId);
+      } else {
+        newSet.add(storyId);
+        // Load tasks when expanding
+        if (!tasks[storyId]) {
+          fetchTasksForStory(storyId);
+        }
+      }
+      return newSet;
+    });
+  };
+
   useEffect(() => {
     if (!authLoading && user) {
       fetchProject();
       fetchStories();
+      fetchConfigs();
     }
-  }, [authLoading, user, fetchProject, fetchStories]);
+  }, [authLoading, user, fetchProject, fetchStories, fetchConfigs]);
 
   const handleDelete = async () => {
     if (!project) return;
@@ -596,10 +800,31 @@ export default function ProjectDetailPage({
 
        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
   <Link
+    href={`/projects/${project.id}/sprint0`}
+    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:from-purple-600 hover:to-pink-600"
+  >
+    <span>🚀</span>
+    Sprint 0
+  </Link>
+  <Link
+    href={`/projects/${project.id}/sprint-planning`}
+    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:from-violet-600 hover:to-purple-600"
+  >
+    <span>📅</span>
+    Sprint Planning
+  </Link>
+  <Link
+    href={`/projects/${project.id}/kanban`}
+    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:from-blue-600 hover:to-indigo-600"
+  >
+    <span>📋</span>
+    Tablero Kanban
+  </Link>
+  <Link
     href={`/projects/${project.id}/estimation`}
     className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-600 hover:to-teal-600"
   >
-    <span></span>
+    <span>🃏</span>
     Planning Poker
   </Link>
   <Link
@@ -884,68 +1109,159 @@ export default function ProjectDetailPage({
                       onDragEnd={() => setDraggingStoryId(null)}
                       className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm"
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-semibold text-white/60">
-                              {story.code}
-                            </span>
-                            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                              Prioridad {story.priority}
-                            </span>
-                            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                              {storyStatusOptions.find(
-                                (option) => option.value === story.status,
-                              )?.label ?? story.status}
-                            </span>
-                          </div>
-                          <h3 className="mt-2 text-base font-semibold text-white">
-                            {story.title}
-                          </h3>
-                          <p className="mt-1 text-sm text-white/60">
-                            Como {story.asA}, quiero {story.iWant} para{" "}
-                            {story.soThat}.
-                          </p>
-                          {story.description && (
-                            <p className="mt-2 text-sm text-white/60">
-                              {story.description}
+                      <div className="space-y-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs font-semibold text-white/60">
+                                {story.code}
+                              </span>
+                              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                                Prioridad {story.priority}
+                              </span>
+                              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                                {storyStatusOptions.find(
+                                  (option) => option.value === story.status,
+                                )?.label ?? story.status}
+                              </span>
+                            </div>
+                            <h3 className="mt-2 text-base font-semibold text-white">
+                              {story.title}
+                            </h3>
+                            <p className="mt-1 text-sm text-white/60">
+                              Como {story.asA}, quiero {story.iWant} para{" "}
+                              {story.soThat}.
                             </p>
-                          )}
-                          <div className="mt-3 space-y-1">
-                            <p className="text-xs font-semibold uppercase text-white/50">
-                              Criterios de aceptacion
-                            </p>
-                            <ul className="list-disc space-y-1 pl-5 text-sm text-white/70">
-                              {story.acceptanceCriteria.map(
-                                (criterion, index) => (
-                                  <li key={index}>{criterion}</li>
-                                ),
-                              )}
-                            </ul>
+                            {story.description && (
+                              <p className="mt-2 text-sm text-white/60">
+                                {story.description}
+                              </p>
+                            )}
+                            <div className="mt-3 space-y-1">
+                              <p className="text-xs font-semibold uppercase text-white/50">
+                                Criterios de aceptacion
+                              </p>
+                              <ul className="list-disc space-y-1 pl-5 text-sm text-white/70">
+                                {story.acceptanceCriteria.map(
+                                  (criterion, index) => (
+                                    <li key={index}>{criterion}</li>
+                                  ),
+                                )}
+                              </ul>
+                            </div>
+                            {story.tags.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {story.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          {story.tags.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {story.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-white"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
+                          {canManageStories && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditStory(story)}
+                                className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                              >
+                                Editar
+                              </button>
                             </div>
                           )}
                         </div>
-                        {canManageStories && (
-                          <div className="flex gap-2">
+
+                        {/* Tasks section */}
+                        <div className="border-t border-white/10 pt-3">
+                          <div className="flex items-center justify-between">
                             <button
-                              onClick={() => handleEditStory(story)}
-                              className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                              onClick={() => toggleStoryExpanded(story.id)}
+                              className="flex items-center gap-2 text-xs font-semibold text-white/60 transition hover:text-white"
                             >
-                              Editar
+                              <span>{expandedStories.has(story.id) ? "▼" : "▶"}</span>
+                              <span>
+                                Tareas ({tasks[story.id]?.length ?? 0})
+                              </span>
                             </button>
+                            {canManageStories && (
+                              <button
+                                onClick={() => handleOpenTaskModal(story.id)}
+                                className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                              >
+                                + Añadir tarea
+                              </button>
+                            )}
                           </div>
-                        )}
+
+                          {expandedStories.has(story.id) && (
+                            <div className="mt-3 space-y-2">
+                              {tasksLoading[story.id] ? (
+                                <p className="text-xs text-white/50">Cargando tareas...</p>
+                              ) : !tasks[story.id] || tasks[story.id].length === 0 ? (
+                                <p className="text-xs text-white/50">
+                                  No hay tareas para esta historia. Agrega una tarea para asignarla a un sprint.
+                                </p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {tasks[story.id].map((task) => (
+                                    <div
+                                      key={task.id}
+                                      className="rounded-lg border border-white/10 bg-white/5 p-3"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs font-mono text-white/60">
+                                              {task.code}
+                                            </span>
+                                            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${taskStatusColors[task.status]}`}>
+                                              {taskStatusOptions.find(opt => opt.value === task.status)?.label}
+                                            </span>
+                                          </div>
+                                          <p className="mt-1 text-sm font-medium text-white">
+                                            {task.title}
+                                          </p>
+                                          {task.description && (
+                                            <p className="mt-1 text-xs text-white/60">
+                                              {task.description}
+                                            </p>
+                                          )}
+                                          <div className="mt-2 flex items-center gap-3 text-xs text-white/50">
+                                            <span>Esfuerzo: {task.effort}h</span>
+                                            {task.assignedTo && (
+                                              <span>
+                                                Asignado a: {task.assignedTo.firstName} {task.assignedTo.lastName}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {canManageStories && (
+                                          <div className="flex gap-1">
+                                            <button
+                                              onClick={() => handleOpenTaskModal(story.id, task)}
+                                              className="rounded border border-white/20 px-2 py-1 text-xs font-semibold text-white transition hover:bg-white/10"
+                                            >
+                                              Editar
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteTask(story.id, task.id)}
+                                              className="rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                                            >
+                                              Eliminar
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}
@@ -1160,6 +1476,125 @@ export default function ProjectDetailPage({
             </div>
           </div>
 
+          {/* Project Configurations */}
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">
+                Configuraciones del Proyecto
+              </h3>
+              <Link
+                href={`/projects/${id}/sprint0`}
+                className="text-sm text-blue-400 hover:text-blue-300"
+              >
+                Ver todas →
+              </Link>
+            </div>
+
+            {configsLoading ? (
+              <div className="text-center text-sm text-gray-400">
+                Cargando configuraciones...
+              </div>
+            ) : !configs || configs.all?.length === 0 ? (
+              <div className="text-center">
+                <p className="mb-3 text-sm text-gray-400">
+                  No hay configuraciones aún
+                </p>
+                <Link
+                  href={`/projects/${id}/sprint0`}
+                  className="inline-block rounded-md bg-purple-500 px-4 py-2 text-sm text-white hover:bg-purple-600"
+                >
+                  Inicializar Sprint 0
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm">
+                {/* DoD Summary */}
+                {configs.byCategory?.definition_of_done && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase text-purple-400">
+                      Definition of Done
+                    </p>
+                    <div className="space-y-1">
+                      {configs.byCategory.definition_of_done.slice(0, 3).map((config: any) => (
+                        <div key={config.id} className="flex items-center gap-2 text-xs">
+                          <span className={config.value === "true" ? "text-green-400" : "text-gray-500"}>
+                            {config.value === "true" ? "✓" : "✗"}
+                          </span>
+                          <span className="text-white/70">
+                            {config.description || config.key}
+                          </span>
+                        </div>
+                      ))}
+                      {configs.byCategory.definition_of_done.length > 3 && (
+                        <p className="text-xs text-gray-500">
+                          +{configs.byCategory.definition_of_done.length - 3} más
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tech Stack Summary */}
+                {configs.byCategory?.tech_infrastructure && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase text-blue-400">
+                      Infraestructura Tecnológica
+                    </p>
+                    <div className="space-y-1">
+                      {configs.byCategory.tech_infrastructure.slice(0, 3).map((config: any) => (
+                        <div key={config.id} className="flex justify-between text-xs">
+                          <span className="text-white/50">
+                            {config.description || config.key}:
+                          </span>
+                          <span className="font-medium text-white">
+                            {config.value}
+                          </span>
+                        </div>
+                      ))}
+                      {configs.byCategory.tech_infrastructure.length > 3 && (
+                        <p className="text-xs text-gray-500">
+                          +{configs.byCategory.tech_infrastructure.length - 3} más
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Development Patterns Summary */}
+                {configs.byCategory?.development_patterns && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase text-emerald-400">
+                      Patrones de Desarrollo
+                    </p>
+                    <div className="space-y-1">
+                      {configs.byCategory.development_patterns.slice(0, 2).map((config: any) => (
+                        <div key={config.id} className="text-xs">
+                          <span className="text-white/50">
+                            {config.description || config.key}:
+                          </span>
+                          <span className="ml-1 font-medium text-white">
+                            {config.value}
+                          </span>
+                        </div>
+                      ))}
+                      {configs.byCategory.development_patterns.length > 2 && (
+                        <p className="text-xs text-gray-500">
+                          +{configs.byCategory.development_patterns.length - 2} más
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-white/10 pt-3 text-center">
+                  <p className="text-xs text-gray-500">
+                    Total: {configs.all.length} configuraciones
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {project._count && (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
               <h3 className="mb-4 text-lg font-semibold text-white">
@@ -1185,6 +1620,113 @@ export default function ProjectDetailPage({
           )}
         </div>
       </div>
+
+      {/* Task Modal */}
+      {showTaskModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-gray-900 p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">
+                {editingTask ? "Editar tarea" : "Nueva tarea"}
+              </h3>
+              <button
+                onClick={handleCloseTaskModal}
+                className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {taskSuccess && (
+              <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
+                {taskSuccess}
+              </div>
+            )}
+
+            {taskError && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                {taskError}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitTask} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase text-white/60">
+                  Título *
+                </label>
+                <input
+                  type="text"
+                  value={taskForm.title}
+                  onChange={(e) =>
+                    setTaskForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  placeholder="Nombre de la tarea"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase text-white/60">
+                  Descripción
+                </label>
+                <textarea
+                  rows={3}
+                  value={taskForm.description}
+                  onChange={(e) =>
+                    setTaskForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  placeholder="Descripción de la tarea (opcional)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase text-white/60">
+                  Esfuerzo (horas) *
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={taskForm.effort}
+                  onChange={(e) =>
+                    setTaskForm((prev) => ({
+                      ...prev,
+                      effort: parseInt(e.target.value) || 1,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-primary focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseTaskModal}
+                  className="rounded-full border border-white/20 px-6 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={taskSaving}
+                  className="rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  {taskSaving
+                    ? "Guardando..."
+                    : editingTask
+                      ? "Actualizar tarea"
+                      : "Crear tarea"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
