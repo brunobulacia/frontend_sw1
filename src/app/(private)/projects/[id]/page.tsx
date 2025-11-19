@@ -241,6 +241,11 @@ export default function ProjectDetailPage({
   const [taskSaving, setTaskSaving] = useState(false);
   const [expandedStories, setExpandedStories] = useState<Set<string>>(new Set());
 
+  // Sprint modal state
+  const [showSprintsModal, setShowSprintsModal] = useState(false);
+  const [sprints, setSprints] = useState<any[]>([]);
+  const [sprintsLoading, setSprintsLoading] = useState(false);
+
   const canManageTeam = useMemo(() => {
     if (!project || !user) return false;
     return project.owner.id === user.id && project.status !== "ARCHIVED";
@@ -301,6 +306,24 @@ export default function ProjectDetailPage({
       setConfigsLoading(false);
     }
   }, [id]);
+
+  const fetchSprints = useCallback(async () => {
+    setSprintsLoading(true);
+    try {
+      const response = await api.get(`/sprints/${id}`);
+      setSprints(response.data);
+    } catch (error: any) {
+      console.error("Error loading sprints:", error);
+      setSprints([]);
+    } finally {
+      setSprintsLoading(false);
+    }
+  }, [id]);
+
+  const handleOpenSprintsModal = async () => {
+    setShowSprintsModal(true);
+    await fetchSprints();
+  };
 
 
   const fetchTasksForStory = useCallback(async (storyId: string) => {
@@ -440,8 +463,9 @@ export default function ProjectDetailPage({
       fetchProject();
       fetchStories();
       fetchConfigs();
+      fetchSprints();
     }
-  }, [authLoading, user, fetchProject, fetchStories, fetchConfigs]);
+  }, [authLoading, user, fetchProject, fetchStories, fetchConfigs, fetchSprints]);
 
   const handleDelete = async () => {
     if (!project) return;
@@ -1476,6 +1500,119 @@ export default function ProjectDetailPage({
             </div>
           </div>
 
+          {/* Sprints Overview */}
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">
+                Sprints del Proyecto
+              </h3>
+              {sprints.length > 0 && (
+                <button
+                  onClick={handleOpenSprintsModal}
+                  className="text-sm text-blue-400 hover:text-blue-300"
+                >
+                  Ver en modal →
+                </button>
+              )}
+            </div>
+
+            {sprintsLoading ? (
+              <div className="py-4 text-center text-sm text-gray-400">
+                Cargando sprints...
+              </div>
+            ) : sprints.length === 0 ? (
+              <div className="py-4 text-center">
+                <p className="mb-3 text-sm text-gray-400">
+                  No hay sprints creados aún
+                </p>
+                <Link
+                  href={`/projects/${id}/sprint-planning`}
+                  className="inline-block rounded-md bg-violet-500 px-4 py-2 text-sm text-white hover:bg-violet-600"
+                >
+                  Crear Sprint
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {sprints.map((sprint) => {
+                  const statusColors: Record<string, string> = {
+                    PLANNED: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+                    IN_PROGRESS: "bg-green-500/20 text-green-300 border-green-500/30",
+                    COMPLETED: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+                    CANCELLED: "bg-red-500/20 text-red-300 border-red-500/30",
+                  };
+
+                  const statusLabels: Record<string, string> = {
+                    PLANNED: "Planificado",
+                    IN_PROGRESS: "En Progreso",
+                    COMPLETED: "Completado",
+                    CANCELLED: "Cancelado",
+                  };
+
+                  return (
+                    <div
+                      key={sprint.id}
+                      className="rounded-xl border border-white/10 bg-white/5 p-3"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">
+                            Sprint {sprint.number}
+                          </span>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusColors[sprint.status] || statusColors.PLANNED}`}
+                          >
+                            {statusLabels[sprint.status] || sprint.status}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-white/50 mb-2">
+                        {new Date(sprint.startDate).toLocaleDateString("es-ES")} - {new Date(sprint.endDate).toLocaleDateString("es-ES")}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1">
+                        <Link
+                          href={`/projects/${id}/kanban`}
+                          className="rounded border border-blue-500/40 bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/20"
+                        >
+                          Kanban
+                        </Link>
+
+                        {(sprint.status === "COMPLETED" || sprint.status === "IN_PROGRESS") && (
+                          <Link
+                            href={`/projects/${id}/sprints/${sprint.id}/review`}
+                            className="rounded border border-purple-500/40 bg-purple-500/10 px-2 py-1 text-xs font-semibold text-purple-300 transition hover:bg-purple-500/20"
+                          >
+                            Review
+                          </Link>
+                        )}
+
+                        {sprint.status === "COMPLETED" && (
+                          <Link
+                            href={`/projects/${id}/sprints/${sprint.id}/retrospective`}
+                            className="rounded border border-pink-500/40 bg-pink-500/10 px-2 py-1 text-xs font-semibold text-pink-300 transition hover:bg-pink-500/20"
+                          >
+                            Retro
+                          </Link>
+                        )}
+
+                        {(sprint.status === "COMPLETED" || sprint.status === "IN_PROGRESS") && (
+                          <Link
+                            href={`/projects/${id}/sprints/${sprint.id}/metrics`}
+                            className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                          >
+                            Métricas
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Project Configurations */}
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
             <div className="mb-4 flex items-center justify-between">
@@ -1724,6 +1861,164 @@ export default function ProjectDetailPage({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Sprints Modal */}
+      {showSprintsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/10 bg-gray-900 p-6 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-white">
+                Sprints del Proyecto
+              </h3>
+              <button
+                onClick={() => setShowSprintsModal(false)}
+                className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {sprintsLoading ? (
+              <div className="py-8 text-center text-sm text-gray-400">
+                Cargando sprints...
+              </div>
+            ) : sprints.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="mb-4 text-sm text-gray-400">
+                  No hay sprints creados aún
+                </p>
+                <Link
+                  href={`/projects/${id}/sprint-planning`}
+                  className="inline-block rounded-lg bg-violet-500 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-600"
+                >
+                  Crear Sprint
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sprints.map((sprint) => {
+                  const statusColors: Record<string, string> = {
+                    PLANNED: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+                    IN_PROGRESS: "bg-green-500/20 text-green-300 border-green-500/30",
+                    COMPLETED: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+                    CANCELLED: "bg-red-500/20 text-red-300 border-red-500/30",
+                  };
+
+                  const statusLabels: Record<string, string> = {
+                    PLANNED: "Planificado",
+                    IN_PROGRESS: "En Progreso",
+                    COMPLETED: "Completado",
+                    CANCELLED: "Cancelado",
+                  };
+
+                  return (
+                    <div
+                      key={sprint.id}
+                      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <h4 className="text-lg font-semibold text-white">
+                              Sprint {sprint.number}
+                            </h4>
+                            <span
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusColors[sprint.status] || statusColors.PLANNED}`}
+                            >
+                              {statusLabels[sprint.status] || sprint.status}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-white/60">
+                            {sprint.name}
+                          </p>
+                          {sprint.goal && (
+                            <p className="mt-2 text-sm text-white/50">
+                              Objetivo: {sprint.goal}
+                            </p>
+                          )}
+
+                          {/* Sprint dates */}
+                          <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/50">
+                            <span>
+                              Inicio: {new Date(sprint.startDate).toLocaleDateString("es-ES")}
+                            </span>
+                            <span>
+                              Fin: {new Date(sprint.endDate).toLocaleDateString("es-ES")}
+                            </span>
+                          </div>
+
+                          {/* Sprint stats */}
+                          <div className="mt-3 flex flex-wrap gap-4 text-xs">
+                            <span className="rounded-full bg-white/10 px-3 py-1 text-white/70">
+                              {sprint._count?.stories ?? 0} Historias
+                            </span>
+                            {sprint.plannedVelocity && (
+                              <span className="rounded-full bg-white/10 px-3 py-1 text-white/70">
+                                Velocidad planificada: {sprint.plannedVelocity}
+                              </span>
+                            )}
+                            {sprint.actualVelocity && (
+                              <span className="rounded-full bg-green-500/20 px-3 py-1 text-green-300">
+                                Velocidad real: {sprint.actualVelocity}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-col gap-2">
+                          <Link
+                            href={`/projects/${id}/kanban`}
+                            className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-center text-xs font-semibold text-blue-300 transition hover:bg-blue-500/20"
+                          >
+                            Ver Kanban
+                          </Link>
+
+                          {(sprint.status === "COMPLETED" || sprint.status === "IN_PROGRESS") && (
+                            <Link
+                              href={`/projects/${id}/sprints/${sprint.id}/review`}
+                              className="rounded-lg border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-center text-xs font-semibold text-purple-300 transition hover:bg-purple-500/20"
+                            >
+                              Sprint Review
+                            </Link>
+                          )}
+
+                          {sprint.status === "COMPLETED" && (
+                            <Link
+                              href={`/projects/${id}/sprints/${sprint.id}/retrospective`}
+                              className="rounded-lg border border-pink-500/40 bg-pink-500/10 px-4 py-2 text-center text-xs font-semibold text-pink-300 transition hover:bg-pink-500/20"
+                            >
+                              Retrospective
+                            </Link>
+                          )}
+
+                          {(sprint.status === "COMPLETED" || sprint.status === "IN_PROGRESS") && (
+                            <Link
+                              href={`/projects/${id}/sprints/${sprint.id}/metrics`}
+                              className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-center text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                            >
+                              Métricas
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="mt-6 border-t border-white/10 pt-4 text-center">
+                  <Link
+                    href={`/projects/${id}/sprint-planning`}
+                    className="inline-block rounded-lg bg-violet-500 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-600"
+                  >
+                    Ir a Sprint Planning
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

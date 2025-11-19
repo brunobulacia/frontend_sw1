@@ -4,12 +4,13 @@ import { normalizeError } from "@/lib/axios/normalizeError";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string; sprintId: string } }
+  { params }: { params: Promise<{ projectId: string; sprintId: string }> }
 ) {
   try {
+    const { projectId, sprintId } = await params;
     const body = await request.json();
     const response = await axiosServer(request).post(
-      `/sprints/${params.sprintId}/retrospective`,
+      `/projects/${projectId}/sprints/${sprintId}/retrospective`,
       body
     );
     return NextResponse.json(response.data, { status: 201 });
@@ -20,11 +21,12 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string; sprintId: string } }
+  { params }: { params: Promise<{ projectId: string; sprintId: string }> }
 ) {
   try {
+    const { projectId, sprintId } = await params;
     const response = await axiosServer(request).get(
-      `/sprints/${params.sprintId}/retrospective`
+      `/projects/${projectId}/sprints/${sprintId}/retrospective`
     );
     return NextResponse.json(response.data);
   } catch (error: any) {
@@ -34,13 +36,29 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { projectId: string; sprintId: string } }
+  { params }: { params: Promise<{ projectId: string; sprintId: string }> }
 ) {
   try {
+    const { projectId, sprintId } = await params;
     const body = await request.json();
     const response = await axiosServer(request).put(
-      `/sprints/${params.sprintId}/retrospective`,
+      `/projects/${projectId}/sprints/${sprintId}/retrospective`,
       body
+    );
+    return NextResponse.json(response.data);
+  } catch (error: any) {
+    return normalizeError(error);
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ projectId: string; sprintId: string }> }
+) {
+  try {
+    const { projectId, sprintId } = await params;
+    const response = await axiosServer(request).delete(
+      `/projects/${projectId}/sprints/${sprintId}/retrospective`
     );
     return NextResponse.json(response.data);
   } catch (error: any) {

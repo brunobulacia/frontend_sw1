@@ -1,12 +1,72 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { api } from '@/lib/axios/client';
+import { useAuth } from '@/hooks/useAuth';
 
-export default function SprintReviewPage() {
-  const params = useParams();
+type ProjectMemberRole = 'PRODUCT_OWNER' | 'SCRUM_MASTER' | 'DEVELOPER';
+
+type ProjectMember = {
+  id: string;
+  role: ProjectMemberRole;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  };
+};
+
+type Project = {
+  id: string;
+  name: string;
+  owner: {
+    id: string;
+  };
+  members: ProjectMember[];
+};
+
+type Sprint = {
+  id: string;
+  number: number;
+  name: string;
+  status: string;
+};
+
+type SprintReview = {
+  id: string;
+  sprintId: string;
+  date: string;
+  participants: string;
+  summary: string;
+  feedbackGeneral: string | null;
+  createdById: string;
+  createdBy?: {
+    firstName: string;
+    lastName: string;
+  };
+};
+
+export default function SprintReviewPage({
+  params,
+}: {
+  params: Promise<{ id: string; sprintId: string }>;
+}) {
+  const { id: projectId, sprintId } = use(params);
   const router = useRouter();
-  const sprintId = params.sprintId as string;
+  const { user, loading: authLoading } = useAuth();
+
+  const [project, setProject] = useState<Project | null>(null);
+  const [sprint, setSprint] = useState<Sprint | null>(null);
+  const [existingReview, setExistingReview] = useState<SprintReview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -14,29 +74,49 @@ export default function SprintReviewPage() {
     summary: '',
     feedbackGeneral: '',
   });
-  const [existingReview, setExistingReview] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Determine user role
+  const userRole = project?.members.find(m => m.user.id === user?.id)?.role ||
+    (project?.owner.id === user?.id ? 'PRODUCT_OWNER' : null);
+
+  const isScrumMaster = userRole === 'SCRUM_MASTER';
+  const canEdit = isScrumMaster;
 
   useEffect(() => {
-    fetchExistingReview();
-  }, [sprintId]);
+    if (!authLoading && user) {
+      fetchData();
+    }
+  }, [authLoading, user, projectId, sprintId]);
 
-  const fetchExistingReview = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const response = await fetch(`/api/sprints/${sprintId}/review`);
-      if (response.ok) {
-        const data = await response.json();
-        setExistingReview(data);
-        setFormData({
-          date: data.date.split('T')[0],
-          participants: data.participants,
-          summary: data.summary,
-          feedbackGeneral: data.feedbackGeneral || '',
-        });
+      // Fetch project to get user role
+      const projectResponse = await api.get(`/projects/${projectId}`);
+      setProject(projectResponse.data);
+
+      // Fetch sprint info
+      const sprintResponse = await api.get(`/sprints/${projectId}/${sprintId}`);
+      setSprint(sprintResponse.data);
+
+      // Fetch existing review
+      try {
+        const reviewResponse = await fetch(`/api/sprints/${projectId}/${sprintId}/review`);
+        if (reviewResponse.ok) {
+          const data = await reviewResponse.json();
+          setExistingReview(data);
+          setFormData({
+            date: data.date.split('T')[0],
+            participants: data.participants,
+            summary: data.summary,
+            feedbackGeneral: data.feedbackGeneral || '',
+          });
+        }
+      } catch {
+        // No review exists yet
       }
-    } catch (err) {
-      // No hay review aún
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Error al cargar los datos');
     } finally {
       setLoading(false);
     }
@@ -44,98 +124,263 @@ export default function SprintReviewPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canEdit) return;
+
     setIsSubmitting(true);
+    setError(null);
+    setSuccess(null);
 
     try {
       const method = existingReview ? 'PUT' : 'POST';
-      const response = await fetch(`/api/sprints/${sprintId}/review`, {
+      const response = await fetch(`/api/sprints/${projectId}/${sprintId}/review`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) throw new Error('Error al guardar');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al guardar');
+      }
 
-      alert('Sprint Review guardado exitosamente');
-      router.back();
-    } catch (error) {
-      alert('Error al guardar Sprint Review');
+      const data = await response.json();
+      setExistingReview(data);
+      setSuccess(existingReview ? 'Review actualizada exitosamente' : 'Review creada exitosamente');
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar Sprint Review');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) return <div className="p-8">Cargando...</div>;
+  const handleDelete = async () => {
+    if (!canEdit || !existingReview) return;
+    if (!confirm('¿Estás seguro de eliminar esta Sprint Review?')) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/sprints/${projectId}/${sprintId}/review`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar');
+      }
+
+      setSuccess('Review eliminada exitosamente');
+      setTimeout(() => router.back(), 1500);
+    } catch (err: any) {
+      setError(err.message || 'Error al eliminar Sprint Review');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-white/60">Cargando...</p>
+      </main>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Sprint Review</h1>
-      
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+    <main className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <label className="block text-sm font-medium mb-2">Fecha *</label>
-          <input
-            type="date"
-            required
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="w-full px-3 py-2 border rounded-md"
-          />
+          <div className="flex items-center gap-3 mb-2">
+            <Link
+              href={`/projects/${projectId}`}
+              className="text-sm text-blue-400 hover:text-blue-300"
+            >
+              ← Volver al proyecto
+            </Link>
+          </div>
+          <h1 className="text-2xl font-semibold text-white">
+            Sprint Review - Sprint {sprint?.number}
+          </h1>
+          <p className="text-sm text-white/60 mt-1">
+            {sprint?.name}
+          </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Participantes *</label>
-          <input
-            type="text"
-            required
-            value={formData.participants}
-            onChange={(e) => setFormData({ ...formData, participants: e.target.value })}
-            placeholder="Scrum Master, Product Owner, Developers"
-            className="w-full px-3 py-2 border rounded-md"
-          />
-        </div>
+        {!canEdit && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2">
+            <p className="text-sm text-yellow-300">
+              Solo el Scrum Master puede editar esta Review
+            </p>
+          </div>
+        )}
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Resumen de lo completado *</label>
-          <textarea
-            required
-            rows={5}
-            value={formData.summary}
-            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-            placeholder="Describe qué se logró completar en el sprint..."
-            className="w-full px-3 py-2 border rounded-md"
-          />
+      {/* Messages */}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          {error}
         </div>
+      )}
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Feedback General</label>
-          <textarea
-            rows={3}
-            value={formData.feedbackGeneral}
-            onChange={(e) => setFormData({ ...formData, feedbackGeneral: e.target.value })}
-            placeholder="Feedback del Product Owner y stakeholders..."
-            className="w-full px-3 py-2 border rounded-md"
-          />
+      {success && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300">
+          {success}
         </div>
+      )}
 
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
-          >
-            {isSubmitting ? 'Guardando...' : existingReview ? 'Actualizar' : 'Crear Review'}
-          </button>
-        </div>
-      </form>
-    </div>
+      {/* Form / View */}
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur">
+        {canEdit ? (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-white/60">
+                Fecha *
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.date}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-white/60">
+                Participantes *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.participants}
+                onChange={(e) => setFormData({ ...formData, participants: e.target.value })}
+                placeholder="Scrum Master, Product Owner, Developers, Stakeholders"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-white/60">
+                Resumen de lo completado *
+              </label>
+              <textarea
+                required
+                rows={6}
+                value={formData.summary}
+                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                placeholder="Describe qué historias de usuario se completaron, qué funcionalidades se entregaron, demos realizadas..."
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-white/60">
+                Feedback General
+              </label>
+              <textarea
+                rows={4}
+                value={formData.feedbackGeneral}
+                onChange={(e) => setFormData({ ...formData, feedbackGeneral: e.target.value })}
+                placeholder="Feedback del Product Owner y stakeholders sobre el incremento entregado..."
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/10">
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="rounded-full border border-white/20 px-6 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  Cancelar
+                </button>
+                {existingReview && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="rounded-full border border-red-500/40 bg-red-500/10 px-6 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                  </button>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded-full bg-purple-500 px-8 py-2 text-sm font-semibold text-white transition hover:bg-purple-600 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Guardando...' : existingReview ? 'Actualizar Review' : 'Crear Review'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          // View-only mode for non-SM users
+          <div className="space-y-6">
+            {existingReview ? (
+              <>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-white/60">Fecha</p>
+                  <p className="text-white">
+                    {new Date(existingReview.date).toLocaleDateString('es-ES', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-white/60">Participantes</p>
+                  <p className="text-white">{existingReview.participants}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-white/60">Resumen de lo completado</p>
+                  <p className="whitespace-pre-wrap text-white/90">{existingReview.summary}</p>
+                </div>
+
+                {existingReview.feedbackGeneral && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase text-white/60">Feedback General</p>
+                    <p className="whitespace-pre-wrap text-white/90">{existingReview.feedbackGeneral}</p>
+                  </div>
+                )}
+
+                {existingReview.createdBy && (
+                  <div className="pt-4 border-t border-white/10">
+                    <p className="text-xs text-white/50">
+                      Creado por {existingReview.createdBy.firstName} {existingReview.createdBy.lastName}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="py-8 text-center">
+                <p className="text-white/60">
+                  No hay Sprint Review registrada para este sprint.
+                </p>
+                <p className="mt-2 text-sm text-white/40">
+                  El Scrum Master debe crear la Review.
+                </p>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="rounded-full border border-white/20 px-6 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Volver
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
-
