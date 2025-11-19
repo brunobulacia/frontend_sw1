@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { axiosServer } from '@/lib/axios/server';
-import { normalizeError } from '@/lib/axios/normalizeError';
+import { NextRequest, NextResponse } from "next/server";
+import { axiosServer } from "@/lib/axios/server";
+import { normalizeError } from "@/lib/axios/normalizeError";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sprintId: string } }
+  { params }: { params: { projectId: string; sprintId: string } }
 ) {
   try {
     const response = await axiosServer(request).get(
@@ -15,4 +15,3 @@ export async function GET(
     return normalizeError(error);
   }
 }
-

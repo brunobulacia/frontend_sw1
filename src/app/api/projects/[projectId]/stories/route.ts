@@ -5,21 +5,21 @@ const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "app_token";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
 
     const response = await fetch(
-      `${BACKEND_URL}/api/projects/${id}/stories`,
+      `${BACKEND_URL}/api/projects/${projectId}/stories`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
-      },
+      }
     );
 
     const data = await response.json();
@@ -28,22 +28,22 @@ export async function GET(
     console.error("Error fetching stories:", error);
     return NextResponse.json(
       { error: "Error al obtener historias" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
     const body = await request.json();
 
     const response = await fetch(
-      `${BACKEND_URL}/api/projects/${id}/stories`,
+      `${BACKEND_URL}/api/projects/${projectId}/stories`,
       {
         method: "POST",
         headers: {
@@ -51,7 +51,7 @@ export async function POST(
           ...(token && { Authorization: `Bearer ${token}` }),
         },
         body: JSON.stringify(body),
-      },
+      }
     );
 
     const data = await response.json();
@@ -60,7 +60,7 @@ export async function POST(
     console.error("Error creating story:", error);
     return NextResponse.json(
       { error: "Error al crear historia" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

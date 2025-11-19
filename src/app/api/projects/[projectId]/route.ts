@@ -1,20 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
-const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'app_token';
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "app_token";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
 
-    const response = await fetch(`${BACKEND_URL}/api/projects/${id}`, {
-      method: 'GET',
+    const response = await fetch(`${BACKEND_URL}/api/projects/${projectId}`, {
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
@@ -27,9 +27,9 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching project:', error);
+    console.error("Error fetching project:", error);
     return NextResponse.json(
-      { error: 'Error al obtener proyecto' },
+      { error: "Error al obtener proyecto" },
       { status: 500 }
     );
   }
@@ -37,17 +37,17 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
     const body = await request.json();
 
-    const response = await fetch(`${BACKEND_URL}/api/projects/${id}`, {
-      method: 'PATCH',
+    const response = await fetch(`${BACKEND_URL}/api/projects/${projectId}`, {
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify(body),
@@ -61,9 +61,9 @@ export async function PATCH(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error updating project:', error);
+    console.error("Error updating project:", error);
     return NextResponse.json(
-      { error: 'Error al actualizar proyecto' },
+      { error: "Error al actualizar proyecto" },
       { status: 500 }
     );
   }
@@ -71,16 +71,16 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { projectId } = await params;
     const token = request.cookies.get(COOKIE_NAME)?.value;
 
-    const response = await fetch(`${BACKEND_URL}/api/projects/${id}`, {
-      method: 'DELETE',
+    const response = await fetch(`${BACKEND_URL}/api/projects/${projectId}`, {
+      method: "DELETE",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
@@ -93,13 +93,10 @@ export async function DELETE(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error deleting project:', error);
+    console.error("Error deleting project:", error);
     return NextResponse.json(
-      { error: 'Error al eliminar proyecto' },
+      { error: "Error al eliminar proyecto" },
       { status: 500 }
     );
   }
 }
-
-
-
