@@ -111,6 +111,8 @@ type Sprint = {
   status: string;
 };
 
+type SprintStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
 export default function KanbanBoardPage({
   params,
 }: {
@@ -129,6 +131,7 @@ export default function KanbanBoardPage({
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [statusChangeLoading, setStatusChangeLoading] = useState(false);
 
   const fetchSprints = useCallback(async () => {
     try {
@@ -297,6 +300,62 @@ export default function KanbanBoardPage({
     }
   };
 
+  const handleChangeSprintStatus = async (newStatus: SprintStatus) => {
+    if (!selectedSprintId) return;
+
+    const selectedSprint = sprints.find(s => s.id === selectedSprintId);
+    if (!selectedSprint) return;
+
+    // Confirmación para completar sprint
+    if (newStatus === "COMPLETED") {
+      const allTasks = Object.values(board?.tasks || {}).flat();
+      const incompleteTasks = allTasks.filter(t => t.status !== "DONE");
+
+      if (incompleteTasks.length > 0) {
+        alert(`No se puede completar el sprint. Hay ${incompleteTasks.length} tarea(s) sin completar. Todas las tareas deben estar en estado DONE.`);
+        return;
+      }
+
+      if (!confirm(`¿Estás seguro de completar el Sprint ${selectedSprint.number}? Esta acción marcará todas las historias como completadas.`)) {
+        return;
+      }
+    }
+
+    // Confirmación para desactivar sprint
+    if (newStatus === "PLANNED") {
+      if (!confirm(`¿Estás seguro de desactivar el Sprint ${selectedSprint.number}? El sprint volverá a estado PLANNED.`)) {
+        return;
+      }
+    }
+
+    setStatusChangeLoading(true);
+    try {
+      await api.patch(`/sprints/${id}/${selectedSprintId}/status`, {
+        status: newStatus,
+      });
+
+      // Actualizar la lista de sprints
+      await fetchSprints();
+
+      // Recargar el tablero
+      await fetchBoard();
+
+      alert(`Sprint ${newStatus === "COMPLETED" ? "completado" : "desactivado"} exitosamente`);
+    } catch (error: any) {
+      console.error("Error changing sprint status:", error);
+      alert(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Error al cambiar el estado del sprint"
+      );
+    } finally {
+      setStatusChangeLoading(false);
+    }
+  };
+
+  // Obtener el sprint actualmente seleccionado
+  const currentSprint = sprints.find(s => s.id === selectedSprintId);
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -396,12 +455,52 @@ export default function KanbanBoardPage({
                 </p>
               )}
             </div>
-            <button
-              onClick={fetchBoard}
-              className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-            >
-              Actualizar
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Botón Desactivar Sprint (solo si está IN_PROGRESS) */}
+              {currentSprint?.status === "IN_PROGRESS" && (
+                <button
+                  onClick={() => handleChangeSprintStatus("PLANNED")}
+                  disabled={statusChangeLoading}
+                  className="rounded-md border border-yellow-500 bg-yellow-500/10 px-4 py-2 text-yellow-400 hover:bg-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Desactivar el sprint y volver a estado PLANNED"
+                >
+                  {statusChangeLoading ? "..." : "Desactivar Sprint"}
+                </button>
+              )}
+
+              {/* Botón Completar Sprint (solo si está IN_PROGRESS) */}
+              {currentSprint?.status === "IN_PROGRESS" && (
+                <button
+                  onClick={() => handleChangeSprintStatus("COMPLETED")}
+                  disabled={statusChangeLoading}
+                  className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Completar el sprint (requiere que todas las tareas estén en DONE)"
+                >
+                  {statusChangeLoading ? "..." : "Completar Sprint"}
+                </button>
+              )}
+
+              {/* Indicador de sprint completado */}
+              {currentSprint?.status === "COMPLETED" && (
+                <span className="rounded-md bg-gray-600 px-4 py-2 text-gray-300">
+                  Sprint Completado
+                </span>
+              )}
+
+              {/* Indicador de sprint planificado */}
+              {currentSprint?.status === "PLANNED" && (
+                <span className="rounded-md bg-blue-600/20 px-4 py-2 text-blue-300">
+                  Sprint en Planificación
+                </span>
+              )}
+
+              <button
+                onClick={fetchBoard}
+                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+              >
+                Actualizar
+              </button>
+            </div>
           </div>
         </div>
 
