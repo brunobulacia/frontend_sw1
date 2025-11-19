@@ -1,5 +1,6 @@
 // lib/axios/server.ts
 import axios from 'axios';
+import { extractAuthToken } from '@/lib/auth/cookies';
 
 const baseURL =
   process.env.API_BASE || // preferir variable privada de servidor
@@ -24,3 +25,21 @@ nestServer.interceptors.response.use(
     return Promise.reject({ status, data });
   },
 );
+
+/**
+ * Helper function to create an axios instance with auth token from request
+ * @param request NextRequest object
+ * @returns Configured axios instance
+ */
+export function axiosServer(request: Request) {
+  const token = extractAuthToken(request);
+  
+  return axios.create({
+    baseURL,
+    timeout: 10000,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+}
