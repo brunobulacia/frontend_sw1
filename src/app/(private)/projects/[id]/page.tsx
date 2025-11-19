@@ -804,67 +804,144 @@ export default function ProjectDetailPage({
 
   return (
     <main className="space-y-8">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-semibold text-white/60">
-            <span>ID: {project.code}</span>
-            <span className="h-1 w-1 rounded-full bg-white/20" />
-            <span>{visibilityLabels[project.visibility]}</span>
+      {/* Project Header */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-semibold text-white/60">
+              <span>ID: {project.code}</span>
+              <span className="h-1 w-1 rounded-full bg-white/20" />
+              <span>{visibilityLabels[project.visibility]}</span>
+            </div>
+            <h1 className="text-3xl font-semibold text-white">{project.name}</h1>
+            {project.description && (
+              <p className="text-sm text-white/60">{project.description}</p>
+            )}
+            <span
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${projectStatusStyles[project.status]}`}
+            >
+              {projectStatusLabels[project.status]}
+            </span>
           </div>
-          <h1 className="text-3xl font-semibold text-white">{project.name}</h1>
-          {project.description && (
-            <p className="text-sm text-white/60">{project.description}</p>
-          )}
-          <span
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${projectStatusStyles[project.status]}`}
-          >
-            {projectStatusLabels[project.status]}
-          </span>
         </div>
 
-       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-  <Link
-    href={`/projects/${project.id}/sprint0`}
-    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30 transition hover:from-purple-600 hover:to-pink-600"
-  >
-    <span>🚀</span>
-    Sprint 0
-  </Link>
-  <Link
-    href={`/projects/${project.id}/sprint-planning`}
-    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:from-violet-600 hover:to-purple-600"
-  >
-    <span>📅</span>
-    Sprint Planning
-  </Link>
-  <Link
-    href={`/projects/${project.id}/kanban`}
-    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:from-blue-600 hover:to-indigo-600"
-  >
-    <span>📋</span>
-    Tablero Kanban
-  </Link>
-  <Link
-    href={`/projects/${project.id}/estimation`}
-    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-600 hover:to-teal-600"
-  >
-    <span>🃏</span>
-    Planning Poker
-  </Link>
-  <Link
-    href={`/projects/${project.id}/edit`}
-    className="inline-flex items-center justify-center rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-  >
-    Editar proyecto
-  </Link>
-  <button
-    onClick={handleDelete}
-    disabled={deleteLoading}
-    className="inline-flex items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 px-6 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
-  >
-    {deleteLoading ? "Archivando..." : "Archivar"}
-  </button>
-</div>
+        {/* Action Panel */}
+        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-6 shadow-xl backdrop-blur">
+          <div className="mb-5 flex items-center gap-2">
+            <span className="text-xl">⚡</span>
+            <h2 className="text-base font-semibold text-white">Acciones del Proyecto</h2>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Scrum Activities Section */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                Actividades Scrum
+              </h3>
+
+              <Link
+                href={`/projects/${project.id}/sprint0`}
+                className="group flex items-center gap-3 rounded-xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/10 p-3 transition-all hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/20"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/20 text-xl">
+                  🚀
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Sprint 0</p>
+                  <p className="text-xs text-white/50">Configuración inicial</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+
+              <Link
+                href={`/projects/${project.id}/sprint-planning`}
+                className="group flex items-center gap-3 rounded-xl border border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-purple-500/10 p-3 transition-all hover:border-violet-500/50 hover:shadow-lg hover:shadow-violet-500/20"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/20 text-xl">
+                  📅
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Sprint Planning</p>
+                  <p className="text-xs text-white/50">Planificar sprints</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+
+              <Link
+                href={`/projects/${project.id}/kanban`}
+                className="group flex items-center gap-3 rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-3 transition-all hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/20"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/20 text-xl">
+                  📋
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Tablero Kanban</p>
+                  <p className="text-xs text-white/50">Gestionar tareas</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+            </div>
+
+            {/* Estimation Section */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                Estimación
+              </h3>
+
+              <Link
+                href={`/projects/${project.id}/estimation`}
+                className="group flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-3 transition-all hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/20"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20 text-xl">
+                  🃏
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Planning Poker</p>
+                  <p className="text-xs text-white/50">Estimar historias</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+            </div>
+
+            {/* Project Settings Section */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                Configuración
+              </h3>
+
+              <Link
+                href={`/projects/${project.id}/edit`}
+                className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 transition-all hover:border-white/20 hover:bg-white/10"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-xl">
+                  ⚙️
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Editar Proyecto</p>
+                  <p className="text-xs text-white/50">Configuración general</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="group flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 transition-all hover:border-red-500/50 hover:bg-red-500/20 disabled:opacity-50"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/20 text-xl">
+                  🗑️
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold text-red-300">
+                    {deleteLoading ? "Archivando..." : "Archivar Proyecto"}
+                  </p>
+                  <p className="text-xs text-red-300/60">Mover a archivo</p>
+                </div>
+                <span className="text-red-300/30 transition-transform group-hover:translate-x-1">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
