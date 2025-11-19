@@ -360,8 +360,14 @@ export default function SprintPlanningPage() {
 
         {selectedSprint && (
           <>
-            {/* Add Stories Button */}
+            {/* Action Buttons */}
             <div className="mb-6 flex justify-end gap-4">
+              <Link
+                href={`/projects/${id}/sprints/${selectedSprint.id}/metrics`}
+                className="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 font-semibold text-white hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md"
+              >
+                📊 Ver Métricas y Burndown
+              </Link>
               <button
                 onClick={() => setShowAddStoriesModal(true)}
                 className="rounded-lg bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-700"
