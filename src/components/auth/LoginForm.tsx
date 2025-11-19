@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { api } from '@/lib/axios/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/lib/axios/client";
+import { useAuth } from "@/hooks/useAuth";
+import { nestServer } from "@/lib/axios/server";
+import axios from "axios";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const sp = useSearchParams();
@@ -17,63 +19,113 @@ export default function LoginForm() {
     event.preventDefault();
     setError(null);
     try {
-      await api.post('/auth/login', { email, password });
+      await api.post("/auth/login", { email, password });
       await refresh();
-      const redirectParam = sp.get('redirect');
+      const redirectParam = sp.get("redirect");
       const destination =
-        redirectParam && redirectParam !== '/' ? redirectParam : '/dashboard';
+        redirectParam && redirectParam !== "/" ? redirectParam : "/dashboard";
       router.replace(destination);
     } catch (err: any) {
-      setError(err?.data?.error || err?.data?.message || 'Credenciales invalidas');
+      setError(
+        err?.data?.error || err?.data?.message || "Credenciales invalidas"
+      );
     }
   };
 
+  useEffect(() => {
+
+    const query = sp.toString();
+    const urlParams = new URLSearchParams(query);
+    const codeParam = urlParams.get("code");
+    console.log("Authorization code from GitHub:", codeParam);
+
+    if (codeParam) {
+      console.log("Authorization code from GitHub:", codeParam);
+     const exchangeCodeForToken = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8000/api/oauth/github/getAccessToken/code=${codeParam}`);
+        localStorage.setItem("access_token", response.data.access_token);
+        // router.replace("/dashboard");
+      } catch (error) {
+        console.error("Error exchanging GitHub code for access token:", error);
+      }
+     }
+      exchangeCodeForToken();
+    }
+  }, []);
+
+  const handleGitHubLogin = () => {
+    const clientId = process.env.NEXT_PUBLIC_CLIENT_ID_GITHUB;
+    console.log("GitHub login clicked");
+    console.log("Client ID:", clientId);
+    router.push(
+      `https://github.com/login/oauth/authorize?client_id=${clientId}`
+    );  
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="email" className="block text-sm font-medium text-white/80">
-          Correo electrónico
-        </label>
-        <input
-          id="email"
-          className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
-          placeholder="nombre@empresa.com"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-      </div>
+    <div>
+      <form onSubmit={onSubmit} className="space-y-4 mb-4">
+        <div className="space-y-2">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-white/80"
+          >
+            Correo electrónico
+          </label>
+          <input
+            id="email"
+            className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+            placeholder="nombre@empresa.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
 
-      <div className="space-y-2">
-        <label htmlFor="password" className="block text-sm font-medium text-white/80">
-          Contraseña
-        </label>
-        <input
-          id="password"
-          className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
-          placeholder="••••••••"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-      </div>
+        <div className="space-y-2">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-white/80"
+          >
+            Contraseña
+          </label>
+          <input
+            id="password"
+            className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 shadow-inner transition hover:border-white/30 focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+            placeholder="••••••••"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </div>
 
-      {error && (
-        <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
-          {error}
-        </p>
-      )}
+        {error && (
+          <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+            {error}
+          </p>
+        )}
 
+        <button
+          className="w-full rounded-xl bg-sky-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-sky-300"
+          type="submit"
+        >
+          Ingresar
+        </button>
+      </form>
       <button
-        className="w-full rounded-xl bg-sky-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-sky-300"
-        type="submit"
+        className="w-full rounded-xl bg-sky-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-sky-300 mb-4"
+        onClick={handleGitHubLogin}
       >
-        Ingresar
+        Ingresar con GitHub
       </button>
       <p className="text-center text-sm text-white/70">
-        <a className="font-medium text-sky-300 hover:text-sky-200" href="/forgot-password">
+        <a
+          className="font-medium text-sky-300 hover:text-sky-200"
+          href="/forgot-password"
+        >
           ¿Olvidaste tu contraseña?
         </a>
       </p>
-    </form>
+    </div>
   );
 }
