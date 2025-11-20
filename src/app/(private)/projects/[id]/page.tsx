@@ -923,6 +923,20 @@ export default function ProjectDetailPage({
                 <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
               </Link>
 
+              <Link
+                href={`/projects/${project.id}/refactor-code`}
+                className="group flex items-center gap-3 rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 p-3 transition-all hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/20"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/20 text-xl">
+                  ✨
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Refactorizar Código</p>
+                  <p className="text-xs text-white/50">IA con Claude</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}

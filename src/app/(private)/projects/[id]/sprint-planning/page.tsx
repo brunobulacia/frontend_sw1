@@ -130,8 +130,8 @@ export default function SprintPlanningPage() {
 
   const fetchProjectMembers = useCallback(async () => {
     try {
-      const response = await api.get(`/projects/${id}/members`);
-      setProjectMembers(response.data);
+      const response = await api.get(`/projects/${id}`);
+      setProjectMembers(response.data.members || []);
     } catch (error) {
       console.error('Error fetching project members:', error);
     }

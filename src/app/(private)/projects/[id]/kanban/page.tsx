@@ -654,17 +654,41 @@ export default function KanbanBoardPage({
                 </span>
               )}
 
-              <button
-                onClick={() => {
-                  fetchBoard();
-                  if (selectedSprintId) {
-                    fetchSprintRisk(selectedSprintId);
-                  }
-                }}
-                className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
-              >
-                Actualizar
-              </button>
+              {/* Botones de control del sprint */}
+              <div className="flex gap-2">
+                {currentSprint && currentSprint.status === "IN_PROGRESS" && (
+                  <>
+                    <button
+                      onClick={() => handleChangeSprintStatus("COMPLETED")}
+                      disabled={statusChangeLoading}
+                      className="rounded-md bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+                      title="Completar Sprint (todas las tareas deben estar en DONE)"
+                    >
+                      {statusChangeLoading ? "Procesando..." : "✓ Completar Sprint"}
+                    </button>
+                    <button
+                      onClick={() => handleChangeSprintStatus("PLANNED")}
+                      disabled={statusChangeLoading}
+                      className="rounded-md bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+                      title="Desactivar Sprint (volver a estado PLANNED)"
+                    >
+                      {statusChangeLoading ? "Procesando..." : "↺ Desactivar"}
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => {
+                    fetchBoard();
+                    if (selectedSprintId) {
+                      fetchSprintRisk(selectedSprintId);
+                    }
+                  }}
+                  className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
+                >
+                  🔄 Actualizar
+                </button>
+              </div>
             </div>
           </div>
         </div>
