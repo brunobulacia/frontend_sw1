@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 const COOKIE_NAME = process.env.AUTH_COOKIE_NAME || 'app_token';
 
 // GET /api/estimation/sessions/:id/history - Histórico de votos

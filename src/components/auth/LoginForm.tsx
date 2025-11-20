@@ -32,26 +32,48 @@ export default function LoginForm() {
   };
 
   useEffect(() => {
-
     const query = sp.toString();
     const urlParams = new URLSearchParams(query);
     const codeParam = urlParams.get("code");
-    console.log("Authorization code from GitHub:", codeParam);
 
     if (codeParam) {
       console.log("Authorization code from GitHub:", codeParam);
-     const exchangeCodeForToken = async () => {
-      try {
-        const response = await axios.get(`http://localhost:8000/api/oauth/github/getAccessToken/code=${codeParam}`);
-        localStorage.setItem("access_token", response.data.access_token);
-        // router.replace("/dashboard");
-      } catch (error) {
-        console.error("Error exchanging GitHub code for access token:", error);
-      }
-     }
-      exchangeCodeForToken();
+      
+      const handleGitHubAuth = async () => {
+        try {
+          // 1. Intercambiar código por token de acceso
+          const tokenResponse = await axios.get(`http://localhost:8080/api/oauth/github/getAccessToken/${codeParam}`);
+          console.log("Token response:", tokenResponse.data);
+          
+          const accessToken = tokenResponse.data.access_token;
+          if (!accessToken) {
+            throw new Error("No access token received");
+          }
+
+          // 2. Autenticar en nuestro sistema usando el token de GitHub
+          const authResponse = await api.post("/auth/github", { 
+            accessToken: accessToken 
+          });
+          
+          console.log("Auth response:", authResponse.data);
+
+          // 3. Refrescar el estado de autenticación
+          await refresh();
+
+          // 4. Redirigir al dashboard
+          const redirectParam = sp.get("redirect");
+          const destination = redirectParam && redirectParam !== "/" ? redirectParam : "/dashboard";
+          router.replace(destination);
+
+        } catch (error) {
+          console.error("Error during GitHub authentication:", error);
+          setError("Error al autenticar con GitHub. Inténtalo de nuevo.");
+        }
+      };
+
+      handleGitHubAuth();
     }
-  }, []);
+  }, [sp, refresh, router]);
 
   const handleGitHubLogin = () => {
     const clientId = process.env.NEXT_PUBLIC_CLIENT_ID_GITHUB;
@@ -112,19 +134,11 @@ export default function LoginForm() {
         </button>
       </form>
       <button
-        className="w-full rounded-xl bg-sky-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-sky-300 mb-4"
+        className="w-full rounded-xl bg-gray-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-gray-400 mb-4"
         onClick={handleGitHubLogin}
       >
         Ingresar con GitHub
       </button>
-      <p className="text-center text-sm text-white/70">
-        <a
-          className="font-medium text-sky-300 hover:text-sky-200"
-          href="/forgot-password"
-        >
-          ¿Olvidaste tu contraseña?
-        </a>
-      </p>
     </div>
   );
 }

@@ -52,11 +52,6 @@ export default function LoginPage() {
                 Registrate
               </Link>
             </p>
-            <p>
-              <Link href="/forgot-password" className="font-semibold text-sky-300 hover:text-sky-200">
-                Olvidaste tu contrasena?
-              </Link>
-            </p>
           </footer>
         </div>
       </section>
