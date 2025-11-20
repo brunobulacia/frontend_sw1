@@ -71,6 +71,47 @@ type ActivityLog = {
   user: UserSummary;
 };
 
+// === Sugerencia ML de asignación ===
+type AssignmentSuggestion = {
+  id: string;
+  storyId: string;
+  taskId: string | null;
+  suggestedUserId: string;
+  confidenceScore: number;
+  reason: string | null;
+  generatedAt: string;
+  suggestedUser?: {
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  };
+};
+
+type AssignmentCandidate = {
+  developerId: string;
+  displayName: string;
+  probability: number;
+  label: number;
+};
+
+type AssignmentSuggestionResponse = {
+  suggestion: AssignmentSuggestion;
+  candidates: AssignmentCandidate[];
+};
+
+// === Predicción de riesgo de sprint ===
+type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+
+type SprintRiskPrediction = {
+  id?: string;
+  sprintId?: string;
+  riskLevel: RiskLevel;
+  confidenceScore: number;
+  generatedAt?: string;
+  factors?: any;
+};
+
 const statusLabels: Record<TaskStatus, string> = {
   TODO: "To Do",
   IN_PROGRESS: "In Progress",
@@ -104,6 +145,43 @@ function getPriorityColor(priority: number): string {
   return "text-green-400";
 }
 
+// ==== Helpers para riesgo ====
+function getRiskLabel(level: RiskLevel): string {
+  switch (level) {
+    case "HIGH":
+      return "Alto";
+    case "MEDIUM":
+      return "Medio";
+    case "LOW":
+    default:
+      return "Bajo";
+  }
+}
+
+function getRiskBadgeClasses(level: RiskLevel): string {
+  switch (level) {
+    case "HIGH":
+      return "bg-red-500/20 text-red-300 border border-red-500/40";
+    case "MEDIUM":
+      return "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40";
+    case "LOW":
+    default:
+      return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+  }
+}
+
+function getRiskIcon(level: RiskLevel): string {
+  switch (level) {
+    case "HIGH":
+      return "⚠️";
+    case "MEDIUM":
+      return "🟡";
+    case "LOW":
+    default:
+      return "✅";
+  }
+}
+
 type Sprint = {
   id: string;
   number: number;
@@ -133,6 +211,18 @@ export default function KanbanBoardPage({
   const [activityLoading, setActivityLoading] = useState(false);
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
 
+  // Sugerencia ML de asignación
+  const [assignmentSuggestion, setAssignmentSuggestion] =
+    useState<AssignmentSuggestion | null>(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+
+  // Predicción de riesgo del sprint
+  const [riskPrediction, setRiskPrediction] =
+    useState<SprintRiskPrediction | null>(null);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [riskError, setRiskError] = useState<string | null>(null);
+
   const fetchSprints = useCallback(async () => {
     try {
       const response = await api.get(`/sprints/${id}`);
@@ -152,7 +242,9 @@ export default function KanbanBoardPage({
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/kanban/projects/${id}/sprints/${selectedSprintId}`);
+      const response = await api.get(
+        `/kanban/projects/${id}/sprints/${selectedSprintId}`,
+      );
       setBoard(response.data as KanbanBoard);
     } catch (error: any) {
       setError(
@@ -183,6 +275,62 @@ export default function KanbanBoardPage({
     [id],
   );
 
+  // === Pedir sugerencia ML de asignación al backend (via Next /api/ml) ===
+  const fetchAssignmentSuggestion = useCallback(async (task: Task) => {
+    try {
+      setSuggestionLoading(true);
+      setSuggestionError(null);
+      setAssignmentSuggestion(null);
+
+      const res = await api.post<AssignmentSuggestionResponse>(
+        "/ml/assignment-suggestion",
+        {
+          storyId: task.story.id,
+          taskId: task.id,
+        },
+      );
+
+      setAssignmentSuggestion(res.data.suggestion);
+    } catch (error: any) {
+      console.error("Error fetching ML assignment suggestion:", error);
+      setAssignmentSuggestion(null);
+      setSuggestionError(
+        error?.response?.data?.message ||
+          "No se pudo obtener la sugerencia ML.",
+      );
+    } finally {
+      setSuggestionLoading(false);
+    }
+  }, []);
+
+  // === Pedir predicción de riesgo del sprint (via Next /api/ml) ===
+  const fetchSprintRisk = useCallback(
+    async (sprintId: string) => {
+      try {
+        setRiskLoading(true);
+        setRiskError(null);
+        setRiskPrediction(null);
+
+        const res = await api.post<SprintRiskPrediction>(
+          "/ml/risk-prediction",
+          { sprintId },
+        );
+
+        setRiskPrediction(res.data);
+      } catch (error: any) {
+        console.error("Error fetching sprint risk prediction:", error);
+        setRiskPrediction(null);
+        setRiskError(
+          error?.response?.data?.message ||
+            "No se pudo obtener el riesgo del sprint.",
+        );
+      } finally {
+        setRiskLoading(false);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!authLoading && user) {
       fetchSprints();
@@ -192,8 +340,13 @@ export default function KanbanBoardPage({
   useEffect(() => {
     if (selectedSprintId) {
       fetchBoard();
+      // Cada vez que cambio de sprint, recalculo el riesgo
+      fetchSprintRisk(selectedSprintId);
+    } else {
+      setRiskPrediction(null);
+      setRiskError(null);
     }
-  }, [selectedSprintId, fetchBoard]);
+  }, [selectedSprintId, fetchBoard, fetchSprintRisk]);
 
   const handleDragStart = (task: Task) => {
     setDraggingTask(task);
@@ -247,8 +400,11 @@ export default function KanbanBoardPage({
       await api.patch(`/kanban/projects/${id}/tasks/${draggingTask.id}/status`, {
         status: targetStatus,
       });
-      // Refresh board to get latest data
+      // Refresh board + riesgo
       fetchBoard();
+      if (selectedSprintId) {
+        fetchSprintRisk(selectedSprintId);
+      }
     } catch (error: any) {
       console.error("Error updating task status:", error);
       // Rollback on error
@@ -275,12 +431,19 @@ export default function KanbanBoardPage({
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
+    setActivityLogs([]);
+    setAssignmentSuggestion(null);
+    setSuggestionError(null);
     fetchActivityLogs(task.id);
+    // Pedimos sugerencia al abrir el modal
+    fetchAssignmentSuggestion(task);
   };
 
   const handleCloseModal = () => {
     setSelectedTask(null);
     setActivityLogs([]);
+    setAssignmentSuggestion(null);
+    setSuggestionError(null);
   };
 
   const handleAssignTask = async (taskId: string, userId: string | null) => {
@@ -291,6 +454,9 @@ export default function KanbanBoardPage({
       fetchBoard();
       if (selectedTask && selectedTask.id === taskId) {
         fetchActivityLogs(taskId);
+      }
+      if (selectedSprintId) {
+        fetchSprintRisk(selectedSprintId);
       }
     } catch (error: any) {
       console.error("Error assigning task:", error);
@@ -455,47 +621,46 @@ export default function KanbanBoardPage({
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {/* Botón Desactivar Sprint (solo si está IN_PROGRESS) */}
-              {currentSprint?.status === "IN_PROGRESS" && (
-                <button
-                  onClick={() => handleChangeSprintStatus("PLANNED")}
-                  disabled={statusChangeLoading}
-                  className="rounded-md border border-yellow-500 bg-yellow-500/10 px-4 py-2 text-yellow-400 hover:bg-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Desactivar el sprint y volver a estado PLANNED"
-                >
-                  {statusChangeLoading ? "..." : "Desactivar Sprint"}
-                </button>
-              )}
 
-              {/* Botón Completar Sprint (solo si está IN_PROGRESS) */}
-              {currentSprint?.status === "IN_PROGRESS" && (
-                <button
-                  onClick={() => handleChangeSprintStatus("COMPLETED")}
-                  disabled={statusChangeLoading}
-                  className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Completar el sprint (requiere que todas las tareas estén en DONE)"
-                >
-                  {statusChangeLoading ? "..." : "Completar Sprint"}
-                </button>
-              )}
-
-              {/* Indicador de sprint completado */}
-              {currentSprint?.status === "COMPLETED" && (
-                <span className="rounded-md bg-gray-600 px-4 py-2 text-gray-300">
-                  Sprint Completado
+            <div className="flex flex-col items-end gap-2">
+              {/* Badge de riesgo */}
+              {riskLoading && (
+                <span className="text-xs text-gray-400">
+                  Calculando riesgo del sprint...
                 </span>
               )}
-
-              {/* Indicador de sprint planificado */}
-              {currentSprint?.status === "PLANNED" && (
-                <span className="rounded-md bg-blue-600/20 px-4 py-2 text-blue-300">
-                  Sprint en Planificación
+              {riskPrediction && (
+                <div
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${getRiskBadgeClasses(
+                    riskPrediction.riskLevel,
+                  )}`}
+                >
+                  <span className="text-sm">
+                    {getRiskIcon(riskPrediction.riskLevel)}
+                  </span>
+                  <span>
+                    Riesgo del sprint:{" "}
+                    {getRiskLabel(riskPrediction.riskLevel)}
+                  </span>
+                  <span className="text-[11px] opacity-80">
+                    ({(riskPrediction.confidenceScore * 100).toFixed(0)}%
+                    confianza)
+                  </span>
+                </div>
+              )}
+              {riskError && (
+                <span className="text-xs text-red-400">
+                  {riskError}
                 </span>
               )}
 
               <button
-                onClick={fetchBoard}
+                onClick={() => {
+                  fetchBoard();
+                  if (selectedSprintId) {
+                    fetchSprintRisk(selectedSprintId);
+                  }
+                }}
                 className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
               >
                 Actualizar
@@ -506,95 +671,99 @@ export default function KanbanBoardPage({
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {columnOrder.map((status) => (
-          <div
-            key={status}
-            onDragOver={(e) => handleDragOver(e, status)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, status)}
-            className={`flex min-h-[500px] flex-col rounded-lg border ${statusColors[status]} p-4 ${
-              dragOverColumn === status ? "ring-2 ring-blue-400" : ""
-            }`}
-          >
-            {/* Column Header */}
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">
-                {statusLabels[status]}
-              </h2>
-              <span className="rounded-full bg-gray-700 px-2 py-1 text-xs text-gray-300">
-                {board.tasks[status].length}
-              </span>
-            </div>
+          {columnOrder.map((status) => (
+            <div
+              key={status}
+              onDragOver={(e) => handleDragOver(e, status)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, status)}
+              className={`flex min-h-[500px] flex-col rounded-lg border ${
+                statusColors[status]
+              } p-4 ${
+                dragOverColumn === status ? "ring-2 ring-blue-400" : ""
+              }`}
+            >
+              {/* Column Header */}
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">
+                  {statusLabels[status]}
+                </h2>
+                <span className="rounded-full bg-gray-700 px-2 py-1 text-xs text-gray-300">
+                  {board.tasks[status].length}
+                </span>
+              </div>
 
-            {/* Task Cards */}
-            <div className="flex-1 space-y-3">
-              {board.tasks[status].map((task) => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={() => handleDragStart(task)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => handleTaskClick(task)}
-                  className="cursor-pointer rounded-lg border border-gray-700 bg-gray-800/50 p-3 shadow-lg transition-all hover:border-blue-500 hover:shadow-xl"
-                >
-                  {/* Task Code */}
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-mono text-blue-400">
-                      {task.code}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {task.effort} pts
-                    </span>
-                  </div>
-
-                  {/* Task Title */}
-                  <h3 className="mb-2 text-sm font-medium text-white">
-                    {task.title}
-                  </h3>
-
-                  {/* Story Info */}
-                  <div className="mb-2 rounded bg-gray-700/50 p-2">
-                    <p className="text-xs text-gray-400">
-                      Historia: {task.story.code}
-                    </p>
-                    <p className="truncate text-xs text-gray-500">
-                      {task.story.title}
-                    </p>
-                  </div>
-
-                  {/* Task Meta */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {/* Priority */}
-                      <span
-                        className={`text-xs font-semibold ${getPriorityColor(task.story.priority)}`}
-                      >
-                        {getPriorityLabel(task.story.priority)}
+              {/* Task Cards */}
+              <div className="flex-1 space-y-3">
+                {board.tasks[status].map((task) => (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={() => handleDragStart(task)}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => handleTaskClick(task)}
+                    className="cursor-pointer rounded-lg border border-gray-700 bg-gray-800/50 p-3 shadow-lg transition-all hover:border-blue-500 hover:shadow-xl"
+                  >
+                    {/* Task Code */}
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-mono text-blue-400">
+                        {task.code}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {task.effort} pts
                       </span>
                     </div>
 
-                    {/* Assigned User */}
-                    {task.assignedTo ? (
-                      <div
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white"
-                        title={`${task.assignedTo.firstName} ${task.assignedTo.lastName}`}
-                      >
-                        {getInitials(task.assignedTo)}
+                    {/* Task Title */}
+                    <h3 className="mb-2 text-sm font-medium text-white">
+                      {task.title}
+                    </h3>
+
+                    {/* Story Info */}
+                    <div className="mb-2 rounded bg-gray-700/50 p-2">
+                      <p className="text-xs text-gray-400">
+                        Historia: {task.story.code}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">
+                        {task.story.title}
+                      </p>
+                    </div>
+
+                    {/* Task Meta */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {/* Priority */}
+                        <span
+                          className={`text-xs font-semibold ${getPriorityColor(
+                            task.story.priority,
+                          )}`}
+                        >
+                          {getPriorityLabel(task.story.priority)}
+                        </span>
                       </div>
-                    ) : (
-                      <div
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-600 text-xs font-semibold text-gray-400"
-                        title="Sin asignar"
-                      >
-                        ?
-                      </div>
-                    )}
+
+                      {/* Assigned User */}
+                      {task.assignedTo ? (
+                        <div
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white"
+                          title={`${task.assignedTo.firstName} ${task.assignedTo.lastName}`}
+                        >
+                          {getInitials(task.assignedTo)}
+                        </div>
+                      ) : (
+                        <div
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-600 text-xs font-semibold text-gray-400"
+                          title="Sin asignar"
+                        >
+                          ?
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         </div>
       </div>
 
@@ -649,13 +818,17 @@ export default function KanbanBoardPage({
                   <label className="block text-sm font-semibold text-gray-400">
                     Estado
                   </label>
-                  <p className="text-white">{statusLabels[selectedTask.status]}</p>
+                  <p className="text-white">
+                    {statusLabels[selectedTask.status]}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-400">
                     Esfuerzo
                   </label>
-                  <p className="text-white">{selectedTask.effort} puntos</p>
+                  <p className="text-white">
+                    {selectedTask.effort} puntos
+                  </p>
                 </div>
               </div>
 
@@ -664,7 +837,11 @@ export default function KanbanBoardPage({
                   <label className="block text-sm font-semibold text-gray-400">
                     Prioridad
                   </label>
-                  <p className={getPriorityColor(selectedTask.story.priority)}>
+                  <p
+                    className={getPriorityColor(
+                      selectedTask.story.priority,
+                    )}
+                  >
                     {getPriorityLabel(selectedTask.story.priority)} (
                     {selectedTask.story.priority})
                   </p>
@@ -673,14 +850,53 @@ export default function KanbanBoardPage({
                   <label className="block text-sm font-semibold text-gray-400">
                     Valor de Negocio
                   </label>
-                  <p className="text-white">{selectedTask.story.businessValue}</p>
+                  <p className="text-white">
+                    {selectedTask.story.businessValue}
+                  </p>
                 </div>
               </div>
 
+              {/* Responsable + Sugerencia ML */}
               <div>
-                <label className="block text-sm font-semibold text-gray-400">
-                  Responsable
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-gray-400">
+                    Responsable
+                  </label>
+
+                  {/* Badge de sugerencia ML */}
+                  <div className="flex items-center gap-2">
+                    {suggestionLoading && (
+                      <span className="text-xs text-gray-400">
+                        Calculando sugerencia ML...
+                      </span>
+                    )}
+                    {assignmentSuggestion &&
+                      assignmentSuggestion.suggestedUser && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300 border border-emerald-500/40">
+                          <span className="text-amber-300">★</span>
+                          <span>
+                            Sugerido:{" "}
+                            {assignmentSuggestion.suggestedUser.firstName}{" "}
+                            {assignmentSuggestion.suggestedUser.lastName}
+                          </span>
+                          <span className="text-emerald-400/80">
+                            (
+                            {(
+                              assignmentSuggestion.confidenceScore * 100
+                            ).toFixed(0)}
+                            %)
+                          </span>
+                        </span>
+                      )}
+                  </div>
+                </div>
+
+                {suggestionError && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {suggestionError}
+                  </p>
+                )}
+
                 <select
                   value={selectedTask.assignedTo?.id || ""}
                   onChange={(e) =>
@@ -692,12 +908,24 @@ export default function KanbanBoardPage({
                   className="mt-1 w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-white"
                 >
                   <option value="">Sin asignar</option>
-                  {board.project.members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.firstName} {member.lastName} ({member.role})
-                    </option>
-                  ))}
+                  {board.project.members.map((member) => {
+                    const isSuggested =
+                      assignmentSuggestion?.suggestedUserId === member.id;
+
+                    return (
+                      <option key={member.id} value={member.id}>
+                        {isSuggested ? "★ " : ""}
+                        {member.firstName} {member.lastName} ({member.role})
+                      </option>
+                    );
+                  })}
                 </select>
+
+                {assignmentSuggestion?.reason && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Motivo ML: {assignmentSuggestion.reason}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -709,7 +937,9 @@ export default function KanbanBoardPage({
               {activityLoading ? (
                 <p className="text-gray-400">Cargando...</p>
               ) : activityLogs.length === 0 ? (
-                <p className="text-gray-400">No hay actividad registrada</p>
+                <p className="text-gray-400">
+                  No hay actividad registrada
+                </p>
               ) : (
                 <div className="max-h-60 space-y-2 overflow-y-auto">
                   {activityLogs.map((log) => (
@@ -727,7 +957,9 @@ export default function KanbanBoardPage({
                           </p>
                         </div>
                         <span className="text-xs text-gray-500">
-                          {new Date(log.createdAt).toLocaleString()}
+                          {new Date(
+                            log.createdAt,
+                          ).toLocaleString()}
                         </span>
                       </div>
                     </div>
