@@ -923,6 +923,20 @@ export default function ProjectDetailPage({
                 <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
               </Link>
 
+              <Link
+                href={`/projects/${project.id}/repositories`}
+                className="group flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-3 transition-all hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/20"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20 text-xl">
+                  📚
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Gestionar Repositorios</p>
+                  <p className="text-xs text-white/50">Conectar repositorios de GitHub</p>
+                </div>
+                <span className="text-white/30 transition-transform group-hover:translate-x-1">→</span>
+              </Link>
+
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}

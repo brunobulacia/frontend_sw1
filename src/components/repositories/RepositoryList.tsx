@@ -29,9 +29,9 @@ export default function RepositoryList({
 }: RepositoryListProps) {
   if (repositories.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center shadow-lg backdrop-blur">
         <svg
-          className="mx-auto h-12 w-12 text-gray-400"
+          className="mx-auto h-12 w-12 text-white/40"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -43,9 +43,9 @@ export default function RepositoryList({
             d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
           />
         </svg>
-        <p className="mt-2 text-gray-600">No hay repositorios registrados</p>
+        <p className="mt-2 text-white/70">No hay repositorios registrados</p>
         {canEdit && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-white/50 mt-1">
             Haz clic en "Agregar Repositorio" para comenzar
           </p>
         )}

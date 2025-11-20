@@ -58,60 +58,60 @@ export default function RepositoryForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] p-6 shadow-xl backdrop-blur">
       <div>
-        <h2 className="text-2xl font-bold mb-4 text-gray-800">
+        <h2 className="text-2xl font-bold mb-4 text-white">
           {initialData ? 'Editar Repositorio' : 'Agregar Repositorio GitHub'}
         </h2>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          {error}
         </div>
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-2">
           Nombre del repositorio *
         </label>
         <input
           id="name"
           type="text"
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none placeholder:text-white/40"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Frontend App"
+          placeholder="Backend"
         />
       </div>
 
       <div>
-        <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="url" className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-2">
           URL de GitHub *
         </label>
         <input
           id="url"
           type="url"
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none placeholder:text-white/40"
           value={formData.url}
           onChange={(e) => setFormData({ ...formData, url: e.target.value })}
           placeholder="https://github.com/owner/repo"
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-white/50 mt-1">
           Debe tener el formato: https://github.com/owner/repo
         </p>
       </div>
 
       <div>
-        <label htmlFor="mainBranch" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="mainBranch" className="block text-xs font-semibold uppercase tracking-wide text-white/60 mb-2">
           Rama principal
         </label>
         <input
           id="mainBranch"
           type="text"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none placeholder:text-white/40"
           value={formData.mainBranch}
           onChange={(e) => setFormData({ ...formData, mainBranch: e.target.value })}
           placeholder="main"
@@ -124,19 +124,19 @@ export default function RepositoryForm({
           type="checkbox"
           checked={formData.isPrimary}
           onChange={(e) => setFormData({ ...formData, isPrimary: e.target.checked })}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          className="w-4 h-4 text-emerald-500 bg-white/5 border-white/20 rounded focus:ring-emerald-500 focus:ring-2"
         />
-        <label htmlFor="isPrimary" className="ml-2 text-sm text-gray-700">
+        <label htmlFor="isPrimary" className="ml-2 text-sm text-white">
           Marcar como repositorio principal
         </label>
       </div>
 
-      <div className="flex justify-end space-x-3 pt-4 border-t">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
           >
             Cancelar
           </button>
@@ -144,7 +144,7 @@ export default function RepositoryForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300"
+          className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
         >
           {isSubmitting ? 'Guardando...' : initialData ? 'Actualizar' : 'Agregar Repositorio'}
         </button>

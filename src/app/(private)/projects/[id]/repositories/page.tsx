@@ -179,15 +179,15 @@ export default function RepositoriesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="mb-6 flex items-center justify-between">
+    <main className="space-y-8">
+      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => router.back()}
-            className="text-blue-600 hover:text-blue-800 flex items-center"
+            className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
           >
             <svg
-              className="w-5 h-5 mr-1"
+              className="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -201,7 +201,7 @@ export default function RepositoriesPage() {
             </svg>
             Volver al Proyecto
           </button>
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-3xl font-semibold text-white">
             Repositorios GitHub
           </h1>
         </div>
@@ -209,7 +209,7 @@ export default function RepositoriesPage() {
         {canEdit && !showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            className="inline-flex items-center gap-2 rounded-full bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-600"
           >
             <svg
               className="w-5 h-5"
@@ -246,7 +246,7 @@ export default function RepositoriesPage() {
         onDelete={handleDelete}
         onSetPrimary={handleSetPrimary}
       />
-    </div>
+    </main>
   );
 }
 
