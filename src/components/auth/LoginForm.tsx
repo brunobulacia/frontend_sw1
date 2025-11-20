@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/axios/client";
 import { useAuth } from "@/hooks/useAuth";
-import { nestServer } from "@/lib/axios/server";
 import axios from "axios";
 
 export default function LoginForm() {
