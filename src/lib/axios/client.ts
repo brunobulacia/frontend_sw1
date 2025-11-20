@@ -4,7 +4,7 @@ export const api = axios.create({
   baseURL: "/api", // llamar a tus rutas API internas de Next
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
-  timeout: 10000,
+  timeout: 60000, // 60 segundos para Claude API
 });
 
 api.interceptors.response.use(
