@@ -71,6 +71,36 @@ type ActivityLog = {
   user: UserSummary;
 };
 
+// === Nuevo: tipo para la sugerencia ML ===
+type AssignmentSuggestion = {
+  id: string;
+  storyId: string;
+  taskId: string | null;
+  suggestedUserId: string;
+  confidenceScore: number;
+  reason: string | null;
+  generatedAt: string;
+  suggestedUser?: {
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  };
+};
+
+type AssignmentCandidate = {
+  developerId: string;
+  displayName: string;
+  probability: number;
+  label: number;
+}
+
+
+type AssignmentSuggestionResponse = {
+  suggestion: AssignmentSuggestion;
+  candidates: AssignmentCandidate[];
+};
+
 const statusLabels: Record<TaskStatus, string> = {
   TODO: "To Do",
   IN_PROGRESS: "In Progress",
@@ -130,6 +160,12 @@ export default function KanbanBoardPage({
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
 
+  // === Nuevo: estado para la sugerencia ML de asignación ===
+  const [assignmentSuggestion, setAssignmentSuggestion] =
+    useState<AssignmentSuggestion | null>(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+
   const fetchSprints = useCallback(async () => {
     try {
       const response = await api.get(`/sprints/${id}`);
@@ -149,13 +185,15 @@ export default function KanbanBoardPage({
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/kanban/projects/${id}/sprints/${selectedSprintId}`);
+      const response = await api.get(
+        `/kanban/projects/${id}/sprints/${selectedSprintId}`,
+      );
       setBoard(response.data as KanbanBoard);
     } catch (error: any) {
       setError(
         error?.response?.data?.error ||
-          error?.response?.data?.message ||
-          "Error al cargar el tablero Kanban.",
+        error?.response?.data?.message ||
+        "Error al cargar el tablero Kanban.",
       );
     } finally {
       setLoading(false);
@@ -179,6 +217,39 @@ export default function KanbanBoardPage({
     },
     [id],
   );
+
+  // === Nuevo: pedir sugerencia ML al backend (via Next /api/ml) ===
+  const fetchAssignmentSuggestion = useCallback(
+    async (task: Task) => {
+      try {
+        setSuggestionLoading(true);
+        setSuggestionError(null);
+        setAssignmentSuggestion(null);
+
+        const res = await api.post<AssignmentSuggestionResponse>(
+          "/ml/assignment-suggestion",
+          {
+            storyId: task.story.id,
+            taskId: task.id,
+          },
+        );
+
+        // 👇 AHORA sí guardamos sólo la sugerencia
+        setAssignmentSuggestion(res.data.suggestion);
+      } catch (error: any) {
+        console.error("Error fetching ML assignment suggestion:", error);
+        setAssignmentSuggestion(null);
+        setSuggestionError(
+          error?.response?.data?.message ||
+          "No se pudo obtener la sugerencia ML.",
+        );
+      } finally {
+        setSuggestionLoading(false);
+      }
+    },
+    [],
+  );
+
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -263,7 +334,7 @@ export default function KanbanBoardPage({
 
       alert(
         error?.response?.data?.message ||
-          "Error al actualizar el estado de la tarea",
+        "Error al actualizar el estado de la tarea",
       );
     } finally {
       setDraggingTask(null);
@@ -272,12 +343,19 @@ export default function KanbanBoardPage({
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
+    setActivityLogs([]);
+    setAssignmentSuggestion(null);
+    setSuggestionError(null);
     fetchActivityLogs(task.id);
+    // Pedimos sugerencia al abrir el modal
+    fetchAssignmentSuggestion(task);
   };
 
   const handleCloseModal = () => {
     setSelectedTask(null);
     setActivityLogs([]);
+    setAssignmentSuggestion(null);
+    setSuggestionError(null);
   };
 
   const handleAssignTask = async (taskId: string, userId: string | null) => {
@@ -348,11 +426,10 @@ export default function KanbanBoardPage({
             <button
               key={sprint.id}
               onClick={() => setSelectedSprintId(sprint.id)}
-              className={`w-full rounded-lg border p-3 text-left transition ${
-                selectedSprintId === sprint.id
+              className={`w-full rounded-lg border p-3 text-left transition ${selectedSprintId === sprint.id
                   ? "border-blue-500 bg-blue-600/20"
                   : "border-gray-700 bg-gray-800/50 hover:border-blue-500/50"
-              }`}
+                }`}
             >
               <div className="font-semibold text-white">
                 Sprint {sprint.number}
@@ -360,15 +437,14 @@ export default function KanbanBoardPage({
               <div className="mt-1 text-sm text-gray-300">{sprint.name}</div>
               <div className="mt-1">
                 <span
-                  className={`rounded px-2 py-1 text-xs font-medium ${
-                    sprint.status === "PLANNED"
+                  className={`rounded px-2 py-1 text-xs font-medium ${sprint.status === "PLANNED"
                       ? "bg-blue-500/20 text-blue-300"
                       : sprint.status === "IN_PROGRESS"
                         ? "bg-green-500/20 text-green-300"
                         : sprint.status === "COMPLETED"
                           ? "bg-gray-500/20 text-gray-300"
                           : "bg-red-500/20 text-red-300"
-                  }`}
+                    }`}
                 >
                   {sprint.status}
                 </span>
@@ -407,95 +483,94 @@ export default function KanbanBoardPage({
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {columnOrder.map((status) => (
-          <div
-            key={status}
-            onDragOver={(e) => handleDragOver(e, status)}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, status)}
-            className={`flex min-h-[500px] flex-col rounded-lg border ${statusColors[status]} p-4 ${
-              dragOverColumn === status ? "ring-2 ring-blue-400" : ""
-            }`}
-          >
-            {/* Column Header */}
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">
-                {statusLabels[status]}
-              </h2>
-              <span className="rounded-full bg-gray-700 px-2 py-1 text-xs text-gray-300">
-                {board.tasks[status].length}
-              </span>
-            </div>
+          {columnOrder.map((status) => (
+            <div
+              key={status}
+              onDragOver={(e) => handleDragOver(e, status)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, status)}
+              className={`flex min-h-[500px] flex-col rounded-lg border ${statusColors[status]} p-4 ${dragOverColumn === status ? "ring-2 ring-blue-400" : ""
+                }`}
+            >
+              {/* Column Header */}
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">
+                  {statusLabels[status]}
+                </h2>
+                <span className="rounded-full bg-gray-700 px-2 py-1 text-xs text-gray-300">
+                  {board.tasks[status].length}
+                </span>
+              </div>
 
-            {/* Task Cards */}
-            <div className="flex-1 space-y-3">
-              {board.tasks[status].map((task) => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={() => handleDragStart(task)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => handleTaskClick(task)}
-                  className="cursor-pointer rounded-lg border border-gray-700 bg-gray-800/50 p-3 shadow-lg transition-all hover:border-blue-500 hover:shadow-xl"
-                >
-                  {/* Task Code */}
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-mono text-blue-400">
-                      {task.code}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {task.effort} pts
-                    </span>
-                  </div>
-
-                  {/* Task Title */}
-                  <h3 className="mb-2 text-sm font-medium text-white">
-                    {task.title}
-                  </h3>
-
-                  {/* Story Info */}
-                  <div className="mb-2 rounded bg-gray-700/50 p-2">
-                    <p className="text-xs text-gray-400">
-                      Historia: {task.story.code}
-                    </p>
-                    <p className="truncate text-xs text-gray-500">
-                      {task.story.title}
-                    </p>
-                  </div>
-
-                  {/* Task Meta */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {/* Priority */}
-                      <span
-                        className={`text-xs font-semibold ${getPriorityColor(task.story.priority)}`}
-                      >
-                        {getPriorityLabel(task.story.priority)}
+              {/* Task Cards */}
+              <div className="flex-1 space-y-3">
+                {board.tasks[status].map((task) => (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={() => handleDragStart(task)}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => handleTaskClick(task)}
+                    className="cursor-pointer rounded-lg border border-gray-700 bg-gray-800/50 p-3 shadow-lg transition-all hover:border-blue-500 hover:shadow-xl"
+                  >
+                    {/* Task Code */}
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-mono text-blue-400">
+                        {task.code}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {task.effort} pts
                       </span>
                     </div>
 
-                    {/* Assigned User */}
-                    {task.assignedTo ? (
-                      <div
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white"
-                        title={`${task.assignedTo.firstName} ${task.assignedTo.lastName}`}
-                      >
-                        {getInitials(task.assignedTo)}
+                    {/* Task Title */}
+                    <h3 className="mb-2 text-sm font-medium text-white">
+                      {task.title}
+                    </h3>
+
+                    {/* Story Info */}
+                    <div className="mb-2 rounded bg-gray-700/50 p-2">
+                      <p className="text-xs text-gray-400">
+                        Historia: {task.story.code}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">
+                        {task.story.title}
+                      </p>
+                    </div>
+
+                    {/* Task Meta */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {/* Priority */}
+                        <span
+                          className={`text-xs font-semibold ${getPriorityColor(task.story.priority)}`}
+                        >
+                          {getPriorityLabel(task.story.priority)}
+                        </span>
                       </div>
-                    ) : (
-                      <div
-                        className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-600 text-xs font-semibold text-gray-400"
-                        title="Sin asignar"
-                      >
-                        ?
-                      </div>
-                    )}
+
+                      {/* Assigned User */}
+                      {task.assignedTo ? (
+                        <div
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white"
+                          title={`${task.assignedTo.firstName} ${task.assignedTo.lastName}`}
+                        >
+                          {getInitials(task.assignedTo)}
+                        </div>
+                      ) : (
+                        <div
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-600 text-xs font-semibold text-gray-400"
+                          title="Sin asignar"
+                        >
+                          ?
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
         </div>
       </div>
 
@@ -550,13 +625,17 @@ export default function KanbanBoardPage({
                   <label className="block text-sm font-semibold text-gray-400">
                     Estado
                   </label>
-                  <p className="text-white">{statusLabels[selectedTask.status]}</p>
+                  <p className="text-white">
+                    {statusLabels[selectedTask.status]}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-400">
                     Esfuerzo
                   </label>
-                  <p className="text-white">{selectedTask.effort} puntos</p>
+                  <p className="text-white">
+                    {selectedTask.effort} puntos
+                  </p>
                 </div>
               </div>
 
@@ -565,7 +644,11 @@ export default function KanbanBoardPage({
                   <label className="block text-sm font-semibold text-gray-400">
                     Prioridad
                   </label>
-                  <p className={getPriorityColor(selectedTask.story.priority)}>
+                  <p
+                    className={getPriorityColor(
+                      selectedTask.story.priority,
+                    )}
+                  >
                     {getPriorityLabel(selectedTask.story.priority)} (
                     {selectedTask.story.priority})
                   </p>
@@ -574,14 +657,52 @@ export default function KanbanBoardPage({
                   <label className="block text-sm font-semibold text-gray-400">
                     Valor de Negocio
                   </label>
-                  <p className="text-white">{selectedTask.story.businessValue}</p>
+                  <p className="text-white">
+                    {selectedTask.story.businessValue}
+                  </p>
                 </div>
               </div>
 
+              {/* Responsable + Sugerencia ML */}
               <div>
-                <label className="block text-sm font-semibold text-gray-400">
-                  Responsable
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-semibold text-gray-400">
+                    Responsable
+                  </label>
+
+                  {/* Badge de sugerencia ML */}
+                  <div className="flex items-center gap-2">
+                    {suggestionLoading && (
+                      <span className="text-xs text-gray-400">
+                        Calculando sugerencia ML...
+                      </span>
+                    )}
+                    {assignmentSuggestion && assignmentSuggestion.suggestedUser && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300 border border-emerald-500/40">
+                        <span className="text-amber-300">★</span>
+                        <span>
+                          Sugerido:{" "}
+                          {assignmentSuggestion.suggestedUser.firstName}{" "}
+                          {assignmentSuggestion.suggestedUser.lastName}
+                        </span>
+                        <span className="text-emerald-400/80">
+                          (
+                          {(
+                            assignmentSuggestion.confidenceScore * 100
+                          ).toFixed(0)}
+                          %)
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {suggestionError && (
+                  <p className="mt-1 text-xs text-red-400">
+                    {suggestionError}
+                  </p>
+                )}
+
                 <select
                   value={selectedTask.assignedTo?.id || ""}
                   onChange={(e) =>
@@ -593,12 +714,24 @@ export default function KanbanBoardPage({
                   className="mt-1 w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-white"
                 >
                   <option value="">Sin asignar</option>
-                  {board.project.members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.firstName} {member.lastName} ({member.role})
-                    </option>
-                  ))}
+                  {board.project.members.map((member) => {
+                    const isSuggested =
+                      assignmentSuggestion?.suggestedUserId === member.id;
+
+                    return (
+                      <option key={member.id} value={member.id}>
+                        {isSuggested ? "★ " : ""}
+                        {member.firstName} {member.lastName} ({member.role})
+                      </option>
+                    );
+                  })}
                 </select>
+
+                {assignmentSuggestion?.reason && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Motivo ML: {assignmentSuggestion.reason}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -610,7 +743,9 @@ export default function KanbanBoardPage({
               {activityLoading ? (
                 <p className="text-gray-400">Cargando...</p>
               ) : activityLogs.length === 0 ? (
-                <p className="text-gray-400">No hay actividad registrada</p>
+                <p className="text-gray-400">
+                  No hay actividad registrada
+                </p>
               ) : (
                 <div className="max-h-60 space-y-2 overflow-y-auto">
                   {activityLogs.map((log) => (
@@ -628,7 +763,9 @@ export default function KanbanBoardPage({
                           </p>
                         </div>
                         <span className="text-xs text-gray-500">
-                          {new Date(log.createdAt).toLocaleString()}
+                          {new Date(
+                            log.createdAt,
+                          ).toLocaleString()}
                         </span>
                       </div>
                     </div>
