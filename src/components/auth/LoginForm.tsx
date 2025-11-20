@@ -43,7 +43,6 @@ export default function LoginForm() {
       
       const handleGitHubAuth = async () => {
         try {
-          // 1. Intercambiar código por token de acceso
           const tokenResponse = await axios.get(`${BACKEND_URL}/api/oauth/github/getAccessToken/${codeParam}`);
           console.log("Token response:", tokenResponse.data);
           
@@ -52,17 +51,14 @@ export default function LoginForm() {
             throw new Error("No access token received");
           }
 
-          // 2. Autenticar en nuestro sistema usando el token de GitHub
           const authResponse = await api.post("/auth/github", { 
             accessToken: accessToken 
           });
           
           console.log("Auth response:", authResponse.data);
 
-          // 3. Refrescar el estado de autenticación
           await refresh();
 
-          // 4. Redirigir al dashboard
           const redirectParam = sp.get("redirect");
           const destination = redirectParam && redirectParam !== "/" ? redirectParam : "/dashboard";
           router.replace(destination);
