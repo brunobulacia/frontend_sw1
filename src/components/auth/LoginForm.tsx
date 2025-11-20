@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/axios/client";
 import { useAuth } from "@/hooks/useAuth";
-import axios from "axios";
+import axios from "axios";  
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -42,7 +44,7 @@ export default function LoginForm() {
       const handleGitHubAuth = async () => {
         try {
           // 1. Intercambiar código por token de acceso
-          const tokenResponse = await axios.get(`http://localhost:8080/api/oauth/github/getAccessToken/${codeParam}`);
+          const tokenResponse = await axios.get(`${BACKEND_URL}/api/oauth/github/getAccessToken/${codeParam}`);
           console.log("Token response:", tokenResponse.data);
           
           const accessToken = tokenResponse.data.access_token;
