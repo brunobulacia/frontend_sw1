@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ================== PALETA / TOKENS (look púrpura) ==================== */
 :root {
   --background: #0f172a;
   --foreground: #f1f5f9;
@@ -21,6 +22,13 @@
 * {
   box-sizing: border-box;
 }
+
+/* ================== RESET / BASE ====================================== */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
 
 body {
   background-color: var(--background);
